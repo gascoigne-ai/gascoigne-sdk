@@ -65,6 +65,7 @@ run = [
   "cargo clippy --all-targets -- -D warnings",
   "cargo clippy --lib --examples -- -D warnings -W clippy::pedantic",
   "cargo test",
+  "cargo clippy --manifest-path ../demos/rust/plain/Cargo.toml -- -D warnings",
 ]
 
 [tasks.style]
@@ -80,7 +81,7 @@ depends = [
 [tasks.e2e]
 description = "Python tests against a real gascoigne binary (GASCOIGNE_BIN or PATH)"
 dir = "python"
-run = "uv run pytest -q -m e2e"
+run = ["uv sync --all-packages", "uv run pytest -q -m e2e"]
 
 [tasks.demo]
 description = "Dry-run every demo (no LLM call); needs gascoigne on PATH"
