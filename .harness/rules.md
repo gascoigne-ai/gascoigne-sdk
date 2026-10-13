@@ -8,3 +8,6 @@
 - No competitor or other token-tool names in code, docs or commits.
 - Tools come from `mise.toml`; Python through uv.
 - Style (100 columns, comments above code, typed models) is in `code-style.md`; `mise run check` enforces what tools can.
+- Automatic decoration of tools or MCP clients (`auto()`) is enabled only by an explicit call in the
+  application. Never by an environment variable, an import side effect or a config file. It must be
+  reversible (`undo()`), idempotent, skip errors, and never touch structured data code reads.

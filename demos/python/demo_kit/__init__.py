@@ -21,11 +21,15 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
+from demo_logs import search_logs
+
 load_dotenv(find_dotenv(usecwd=True))
 
 # A dedicated gascoigne server whose LLM proxy forwards to OpenRouter (see gascoigne.yaml).
 os.environ.setdefault("GASCOIGNE_CONFIG", str(Path(__file__).parents[2] / "gascoigne.yaml"))
 os.environ.setdefault("GASCOIGNE_SERVER_ADDR", "127.0.0.1:7879")
+
+__all__ = ["PROMPT", "openrouter", "run", "run_proxy", "search_logs"]
 
 console = Console()
 PROMPT = (
@@ -57,23 +61,13 @@ class OpenRouterSettings:
         if not api_key and not dry():
             console.print("[red]OPENROUTER_API_KEY is not set[/]: copy .env.example to .env")
             sys.exit(1)
-        return cls(model=model(), api_key=api_key or "dry-run")
+        # OPENROUTER_BASE_URL points the demos at another OpenAI-compatible server, for example a
+        # local fake used in tests.
+        base_url = os.environ.get("OPENROUTER_BASE_URL", cls.base_url)
+        return cls(model=model(), api_key=api_key or "dry-run", base_url=base_url)
 
 
 openrouter = OpenRouterSettings.from_env()
-
-
-def search_logs() -> str:
-    """Return the recent service logs."""
-    # Request ids differ per run, as in real logs; the proxy caches identical results.
-    first_id = int(time.time()) % 1_000_000
-    lines = [
-        f"2026-10-13T12:{i // 60:02d}:{i % 60:02d}Z INFO worker-{i % 7} handled request "
-        f"id={first_id + i} status=200 took={i % 90}ms"
-        for i in range(400)
-    ]
-    lines.insert(250, "2026-10-13T12:04:10Z ERROR db connection timeout after 30s (pool exhausted)")
-    return "\n".join(lines)
 
 
 def _preview(text: str, lines: int = 8) -> Text:

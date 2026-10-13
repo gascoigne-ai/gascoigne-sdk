@@ -103,6 +103,30 @@ endpoint. The proxy forwards to the upstream in the gascoigne config; the demos 
 When to use which: proxy mode needs a client whose base URL you can set and covers everything the
 model reads; wrapping works with any provider and lets you pick tools one by one.
 
+## Auto mode: decorate tools and MCP calls, when you ask for it
+
+If you would rather not wrap each tool, one explicit call decorates the common chokepoints of the
+libraries you have installed (Python today):
+
+```python
+# Start gascoigne, then opt in. Nothing is decorated unless this line is in your code.
+gascoigne.init(agent="my-app")
+gascoigne.auto(skip=["write_file"])
+```
+
+| What it covers | How |
+|---|---|
+| MCP servers, through any framework that uses the `mcp` client (LangChain MCP adapters, OpenAI Agents, ADK, Agno, Pydantic AI, LlamaIndex, ...) | `mcp.ClientSession.call_tool` |
+| LangChain and LangGraph tools | `BaseTool.invoke` / `ainvoke` |
+
+Rules it follows: opt-in only (no environment switch, no import side effect); `skip=` and `only=` pick
+tools; results under `min_chars` never leave the process; errors and structured data that code reads
+are untouched; `handle.undo()` restores everything.
+
+Shortened results end with a `gascoigne raw <id>` hint. Give the model a way to follow it by adding
+`gascoigne.retrieve_original` to its tools (it takes `raw_id`, optional `grep` and `lines`). The demo
+`demos/python/auto-mcp` shows an agent with an MCP server this way.
+
 ## Settings
 
 | Env | Effect |

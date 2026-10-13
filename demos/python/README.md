@@ -22,5 +22,8 @@ unwrapped (one added line). Needs a real run, so it has no dry mode.
 uv run --extra langgraph python langgraph/proxy.py
 ```
 
+`auto-mcp/` shows `gascoigne.auto()`: a LangGraph agent with an MCP server, decorated automatically
+after one explicit call (`uv run --extra auto-mcp python auto-mcp/main.py`).
+
 Extras (one per run, their pins conflict): `langchain langgraph agno adk openai-agents crewai
-llamaindex pydantic-ai smolagents`.
+llamaindex pydantic-ai smolagents auto-mcp`.
