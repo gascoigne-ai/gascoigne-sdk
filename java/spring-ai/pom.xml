@@ -4,13 +4,21 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>ai.gascoigne</groupId>
   <artifactId>gascoigne-spring-ai</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
   <name>gascoigne-spring-ai</name>
   <description>Opt-in gascoigne optimization of every Spring AI tool call</description>
   <url>https://github.com/gascoigne-ai/gascoigne-sdk</url>
   <licenses>
     <license><name>Apache-2.0</name><url>https://www.apache.org/licenses/LICENSE-2.0</url></license>
   </licenses>
+
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/gascoigne-ai/gascoigne-sdk</url>
+    </repository>
+  </distributionManagement>
 
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
@@ -34,7 +42,7 @@
     <dependency>
       <groupId>ai.gascoigne</groupId>
       <artifactId>gascoigne</artifactId>
-      <version>0.1.0</version>
+      <version>0.1.1</version>
     </dependency>
     <dependency>
       <groupId>org.springframework.ai</groupId>

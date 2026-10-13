@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>ai.gascoigne</groupId>
   <artifactId>gascoigne</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
   <name>gascoigne</name>
   <description>Embed gascoigne token optimization in agent frameworks</description>
   <url>https://github.com/gascoigne-ai/gascoigne-sdk</url>
@@ -12,6 +12,14 @@
     <license><name>Apache-2.0</name><url>https://www.apache.org/licenses/LICENSE-2.0</url></license>
   </licenses>
   <scm><url>https://github.com/gascoigne-ai/gascoigne-sdk</url></scm>
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/gascoigne-ai/gascoigne-sdk</url>
+    </repository>
+  </distributionManagement>
+
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
