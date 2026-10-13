@@ -6,7 +6,7 @@ Each ecosystem has its own version and tag prefix. Pushing the tag runs
 | Ecosystem | Tag | Artifacts on the GitHub release |
 |---|---|---|
 | Python | `py-v0.1.0` | wheel, sdist, `checksums.txt` |
-| TypeScript | `ts-v0.1.0` | one `.tgz` per package (`@gascoigne/sdk`, `@gascoigne/ai-sdk`) |
+| TypeScript | `ts-v0.1.0` | one `.tgz` per package (`@gascoigne-ai/sdk`, `@gascoigne-ai/ai-sdk`) |
 | Go | `go/v0.1.0` | none; the Go module proxy serves the tag |
 | Java | `java-v0.1.0` | `gascoigne` and `gascoigne-spring-ai` jars |
 | .NET | `dotnet-v0.1.0` | `Gascoigne` and `Gascoigne.Extensions.AI` `.nupkg` |
@@ -23,7 +23,12 @@ The workflow checks that the tag matches the files (`scripts/check_version.py`),
 `mise run <lang>:check`, builds the artifacts, writes `checksums.txt` and creates the GitHub release
 with generated notes. None of this needs a secret.
 
-## Publishing to a registry
+## GitHub Packages
+
+npm, Maven and NuGet releases are also published to GitHub Packages automatically (no setup, the
+workflow token is enough). How to install them: [`github-packages.md`](github-packages.md).
+
+## Publishing to a public registry
 
 A second job per ecosystem publishes the release's artifacts. It runs only when the repository
 variable is `true` and the credentials exist:

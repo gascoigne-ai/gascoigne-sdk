@@ -41,7 +41,7 @@ search_logs = gascoigne.wrap_tool(search_logs)      # any tool function returnin
 | | Install | Hook |
 |---|---|---|
 | **Python** | `uv add gascoigne` | `gascoigne.wrap_tool(fn)`; for LangChain tools `gascoigne.ext.langchain.optimize_tools(tools)` |
-| **TypeScript** | `pnpm add @gascoigne/sdk` | `wrapTool(fn)`; for Vercel AI SDK `wrapTools(tools)` from `@gascoigne/ai-sdk` |
+| **TypeScript** | `pnpm add @gascoigne-ai/sdk` | `wrapTool(fn)`; for Vercel AI SDK `wrapTools(tools)` from `@gascoigne-ai/ai-sdk` |
 | **Go** | `go get github.com/gascoigne-ai/gascoigne-sdk/go` | `rt.WrapTool(tool)` or `gascoigne.WrapFunc(rt, name, fn)` |
 | **Java** | `ai.gascoigne:gascoigne` | `g.optimize(text, Attrs.tool(name))` inside Spring AI / LangChain4j tools, or `g.wrapTool(name, fn)` |
 | **.NET** | `dotnet add package Gascoigne` | `g.WrapTool(name, fn)` for Semantic Kernel and Microsoft.Extensions.AI tools |
@@ -150,7 +150,8 @@ mise run check      # lint + tests for all six SDKs
 mise run e2e        # against a real binary: GASCOIGNE_BIN=../gascoigne-cli/bin/gascoigne
 ```
 
-Releases and registry credentials: [`docs/releasing.md`](docs/releasing.md). Rules for contributors:
+Releases and registry credentials: [`docs/releasing.md`](docs/releasing.md). npm, Maven and NuGet
+packages are on GitHub Packages: [`docs/github-packages.md`](docs/github-packages.md). Rules for contributors:
 [`.harness/rules.md`](.harness/rules.md).
 
 ## License

@@ -2,9 +2,10 @@ name: release
 # Independent versions per ecosystem, chosen by tag prefix:
 #   py-v1.2.3  ts-v1.2.3  go/v1.2.3  java-v1.2.3  dotnet-v1.2.3  rust-v1.2.3
 #
-# Every tag builds its artifacts and attaches them, with checksums, to a GitHub release. That needs
-# no secrets. Publishing to a registry is a second job per ecosystem, switched on by a repository
-# variable (PUBLISH_PYPI, PUBLISH_NPM, PUBLISH_NUGET, PUBLISH_CRATES, PUBLISH_MAVEN = true) and by
+# Every tag builds its artifacts and attaches them, with checksums, to a GitHub release, and the
+# npm, Maven and NuGet ones also go to GitHub Packages. Neither needs a secret beyond the workflow's
+# own token. Publishing to the public registries is a further job per ecosystem, switched on by a
+# repository variable (PUBLISH_PYPI, PUBLISH_NPM, PUBLISH_NUGET, PUBLISH_CRATES, PUBLISH_MAVEN = true) and by
 # the secrets in docs/releasing.md.
 on:
   push:
@@ -61,6 +62,18 @@ jobs:
       - run: for f in dist/*.tgz; do npm publish "$f" --access public --provenance; done
         env: { NODE_AUTH_TOKEN: "${{ secrets.NPM_TOKEN }}" }
 
+  packages-npm:
+    needs: typescript
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, registry-url: "https://npm.pkg.github.com" }
+      - run: gh release download "$TAG" --dir dist --pattern '*.tgz'
+      - run: for f in dist/*.tgz; do npm publish "$f"; done
+        env: { NODE_AUTH_TOKEN: "${{ github.token }}" }
+
   go:
     if: startsWith(github.ref_name, 'go/v')
     runs-on: ubuntu-latest
@@ -83,6 +96,21 @@ jobs:
       - run: mkdir dist && cp java/target/gascoigne-*.jar java/spring-ai/target/gascoigne-spring-ai-*.jar dist/
       - run: cd dist && sha256sum * > checksums.txt
       - run: gh release create "$TAG" dist/* --title "Java SDK ${TAG#java-v}" --generate-notes
+  packages-maven:
+    needs: java
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+      - run: cd java && mvn -B deploy -DskipTests && cd spring-ai && mvn -B deploy -DskipTests
+        env: { GITHUB_ACTOR: "${{ github.actor }}", GITHUB_TOKEN: "${{ github.token }}" }
   # Maven Central needs the central-publishing plugin, signing and a namespace: see docs/releasing.md.
   publish-maven:
     needs: java
@@ -107,6 +135,15 @@ jobs:
       - run: cd dotnet && dotnet pack src/Gascoigne -c Release -o ../dist && dotnet pack src/Gascoigne.Extensions.AI -c Release -o ../dist
       - run: cd dist && sha256sum * > checksums.txt
       - run: gh release create "$TAG" dist/* --title ".NET SDK ${TAG#dotnet-v}" --generate-notes
+  packages-nuget:
+    needs: dotnet
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: gh release download "$TAG" --dir dist --pattern '*.nupkg'
+      - run: dotnet nuget push "dist/*.nupkg" --api-key "${{ github.token }}" --source https://nuget.pkg.github.com/gascoigne-ai/index.json
   publish-nuget:
     needs: dotnet
     if: vars.PUBLISH_NUGET == 'true'
