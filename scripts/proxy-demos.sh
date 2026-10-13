@@ -33,5 +33,7 @@ echo "-- python / langgraph (auto, MCP)"
 (cd demos/python && uv run --extra auto-mcp python langgraph/auto.py | grep -E "Saved|Bypassed")
 echo "-- java / spring-ai (auto)"
 (cd demos/java && java -jar spring-ai/auto/target/demo-spring-ai-auto-0.0.0.jar | grep -E "Saved|No optimization")
+echo "-- dotnet / microsoft-extensions-ai (auto)"
+(cd demos/dotnet && dotnet run --project microsoft-extensions-ai/auto | grep -E "Saved|No optimization")
 echo "-- java / spring-ai (proxy)"
 (cd demos/java && java -jar spring-ai/proxy/target/demo-spring-ai-proxy-0.0.0.jar | grep -E "search_logs:|no new")
