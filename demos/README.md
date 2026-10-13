@@ -42,7 +42,7 @@ cp .env.example .env     # in the repo root; put your OPENROUTER_API_KEY in it
 | Java | `mvn -f java/pom.xml install -DskipTests && mvn -f java/spring-ai/pom.xml install -DskipTests && cd demos/java && mvn -q package && java -jar spring-ai/wrap/target/demo-spring-ai-wrap-0.0.0.jar` |
 | .NET | `cd demos/dotnet && dotnet run --project microsoft-extensions-ai/wrap` (or `auto`) |
 | Go | `cd demos/go && go run ./langchaingo/wrap` |
-| Rust | `cd rust && cargo run --example plain` |
+| Rust | `cd demos/rust/plain && cargo run` |
 
 No key yet? `GASCOIGNE_DEMO_DRY=1` builds each agent and calls its tool without the LLM
 (`mise run demo` does that for all `wrap` demos), and `mise run demo:proxy` runs the `proxy` and

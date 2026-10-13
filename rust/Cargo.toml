@@ -11,7 +11,3 @@ readme = "README.md"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ureq = { version = "2", features = ["json"] }
-
-[[example]]
-name = "plain"
-path = "../demos/rust/plain/wrap.rs"

@@ -67,7 +67,7 @@ cp .env.example .env        # put your OPENROUTER_API_KEY in it (the file is git
 | Java | Spring AI, LangChain4j | see [`demos/README.md`](demos/README.md) |
 | .NET | Microsoft.Extensions.AI | `cd demos/dotnet && dotnet run --project microsoft-extensions-ai/wrap` |
 | Go | langchaingo | `cd demos/go && go run ./langchaingo/wrap` |
-| Rust | none (no LLM, optimizes a log) | `cd rust && cargo run --example plain` |
+| Rust | none (no LLM, optimizes a log) | `cd demos/rust/plain && cargo run` |
 
 No key yet? `GASCOIGNE_DEMO_DRY=1` builds each agent and calls its tool without the LLM, and
 `mise run demo` does that for all of them.

@@ -23,4 +23,4 @@ echo "-- dotnet / microsoft-extensions-ai"
 echo "-- go / langchaingo"
 (cd demos/go && go run ./langchaingo/wrap | tail -2)
 echo "-- rust / plain"
-(cd rust && cargo run -q --example plain | tail -2)
+(cd demos/rust/plain && cargo run -q | tail -2)

@@ -1,5 +1,5 @@
 //! No LLM needed: optimize a noisy 400-line log, the way a tool result would be.
-//!   cargo run --example logs
+//!   cd demos/rust/plain && cargo run
 use gascoigne::{Attrs, Runtime};
 
 fn noisy_log() -> String {

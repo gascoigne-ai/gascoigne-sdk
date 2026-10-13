@@ -1,0 +1,12 @@
+[package]
+name = "gascoigne-demo-plain"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "plain"
+path = "wrap.rs"
+
+[dependencies]
+gascoigne = { path = "../../../rust" }
