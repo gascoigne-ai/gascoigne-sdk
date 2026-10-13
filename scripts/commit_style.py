@@ -9,7 +9,8 @@ import subprocess
 import sys
 
 TYPES = "feat|fix|docs|test|refactor|build|ci|release"
-SUBJECT = re.compile(rf"^({TYPES})(\([a-z0-9][a-z0-9-]*\))?: [a-z0-9`$@/.\-].*[^.]$")
+# The description starts lower case unless it opens with a name or identifier (Spring, UseFoo).
+SUBJECT = re.compile(rf"^({TYPES})(\([a-z0-9][a-z0-9-]*\))?: [A-Za-z0-9`$@/.\-].*[^.]$")
 MAX_SUBJECT = 72
 
 
@@ -25,7 +26,7 @@ def main() -> int:
     problems = []
     for subject in subjects(revision_range):
         if not SUBJECT.match(subject):
-            problems.append(f"not '<type>(<scope>): <lower case subject>': {subject}")
+            problems.append(f"not '<type>(<scope>): <subject>': {subject}")
         elif len(subject) > MAX_SUBJECT:
             problems.append(f"longer than {MAX_SUBJECT} characters: {subject}")
     print("\n".join(problems) or "commit subjects ok")
