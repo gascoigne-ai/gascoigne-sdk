@@ -9,7 +9,7 @@
     "lint": "biome check ."
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^26.6.5",
     "typescript": "^5.6.0",
     "vitest": "^3.0.0",
     "@biomejs/biome": "^2.0.0"
