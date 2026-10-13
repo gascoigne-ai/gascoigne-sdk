@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -97,8 +98,8 @@ func OpenRouter() Config {
 
 // SearchLogs is the noisy tool: 400 near-identical lines and one error.
 func SearchLogs() string {
-	// Request ids differ per run, as in real logs; the proxy caches identical results.
-	firstID := int(time.Now().Unix() % 1_000_000)
+	// Request ids differ per call, as in real logs; the proxy caches identical results.
+	firstID := rand.IntN(900_000)
 	lines := make([]string, 0, 401)
 	for i := range 400 {
 		if i == 250 {
