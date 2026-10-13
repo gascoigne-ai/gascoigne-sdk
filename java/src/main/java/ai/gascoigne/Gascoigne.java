@@ -314,6 +314,25 @@ public final class Gascoigne {
         }
     }
 
+    /**
+     * Part of an original, for a model that needs what was folded.
+     *
+     * @param rawId the id from a "gascoigne raw" hint
+     * @param grep regex matched per line, empty for all lines
+     * @param lines range such as "10-40", empty for all lines
+     */
+    public String retrieve(String rawId, String grep, String lines) {
+        String original = raw(rawId);
+        if (original.isEmpty()) {
+            return "No original stored for " + rawId + ".";
+        }
+        try {
+            return Selection.of(original, grep, lines);
+        } catch (RuntimeException e) {
+            return "Bad selection: " + e.getMessage();
+        }
+    }
+
     /** Base URL that routes an LLM client through the gascoigne proxy; empty in bypass. */
     public Optional<String> proxyBaseUrl(String api) {
         if (!ready()) {

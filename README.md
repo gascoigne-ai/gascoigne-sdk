@@ -52,8 +52,8 @@ Every SDK has the same surface: `optimize`, `raw`, `proxy_base_url`, `stats`, `w
 
 ## Demos (OpenRouter)
 
-Each demo gives an agent a tool that returns a 400-line service log and prints the before/after.
-Each main file is the integration: **two added lines** (start gascoigne, wrap the tool). The noisy tool,
+All demos live in [`demos/`](demos/README.md), as `demos/<language>/<framework>/<mode>` with mode
+`wrap`, `proxy` or `auto`. Each main file is the integration: one or two added lines. The noisy tool,
 OpenRouter settings and the report live in a small `kit` next to it.
 
 ```sh
@@ -62,11 +62,11 @@ cp .env.example .env        # put your OPENROUTER_API_KEY in it (the file is git
 
 | Language | Frameworks | Run |
 |---|---|---|
-| Python | `langchain`, `langgraph`, `agno`, `google-adk`, `openai-agents`, `crewai`, `llamaindex`, `pydantic-ai`, `smolagents` (one folder each) | `cd demos/python && uv run --extra langgraph python langgraph/main.py` |
-| TypeScript | Vercel AI SDK, LangChain.js, OpenAI Agents JS, Mastra | `cd typescript && pnpm install && pnpm --filter gascoigne-ts-demos ai-sdk` |
-| Java | Spring AI, LangChain4j | `mvn -f java/pom.xml install -DskipTests && cd java/demos && mvn -q package && java -jar spring-ai/target/*.jar` |
-| Go | langchaingo | `cd go/demos && go run ./langchaingo` |
-| Rust | none (no LLM, optimizes a log) | `cd rust && cargo run --example logs` |
+| Python | langchain, langgraph, agno, google-adk, openai-agents, crewai, llamaindex, pydantic-ai, smolagents | `cd demos/python && uv run --extra langgraph python langgraph/wrap.py` |
+| TypeScript | Vercel AI SDK, LangChain.js, OpenAI Agents JS, Mastra | `cd demos/typescript && pnpm install && pnpm ai-sdk:wrap` |
+| Java | Spring AI, LangChain4j | see [`demos/README.md`](demos/README.md) |
+| Go | langchaingo | `cd demos/go && go run ./langchaingo/wrap` |
+| Rust | none (no LLM, optimizes a log) | `cd rust && cargo run --example plain` |
 
 No key yet? `GASCOIGNE_DEMO_DRY=1` builds each agent and calls its tool without the LLM, and
 `mise run demo` does that for all of them.
@@ -90,14 +90,14 @@ agent = create_agent(ChatOpenAI(model=..., api_key=..., base_url=base_url), [too
 endpoint. The proxy forwards to the upstream in the gascoigne config; the demos ship
 [`demos/gascoigne.yaml`](demos/gascoigne.yaml) pointing it at OpenRouter and start a dedicated server.
 
-| Language | Proxy demos (next to the wrapping ones) |
+| Language | Proxy demos (`<framework>/proxy`) |
 |---|---|
-| Python | `<framework>/proxy.py` for langchain, langgraph, agno, google-adk, openai-agents, crewai, llamaindex, pydantic-ai, smolagents |
-| TypeScript | `typescript/demos/proxy/` : ai-sdk, langchain, openai-agents, mastra |
-| Java | `java/demos/spring-ai-proxy` |
-| Go | `go/demos/langchaingo-proxy` |
+| Python | langchain, langgraph, agno, google-adk, openai-agents, crewai, llamaindex, pydantic-ai, smolagents |
+| TypeScript | ai-sdk, langchain, openai-agents, mastra |
+| Java | `spring-ai/proxy` |
+| Go | `langchaingo/proxy` |
 
-`mise run demo:proxy` runs most of them for real with no API key, using a fake LLM
+`mise run demo:proxy` runs most of them, and the auto demos, for real with no API key, using a fake LLM
 ([`scripts/fake_llm.py`](scripts/fake_llm.py)) in place of OpenRouter.
 
 When to use which: proxy mode needs a client whose base URL you can set and covers everything the
@@ -124,8 +124,9 @@ tools; results under `min_chars` never leave the process; errors and structured 
 are untouched; `handle.undo()` restores everything.
 
 Shortened results end with a `gascoigne raw <id>` hint. Give the model a way to follow it by adding
-`gascoigne.retrieve_original` to its tools (it takes `raw_id`, optional `grep` and `lines`). The demo
-`demos/python/auto-mcp` shows an agent with an MCP server this way.
+`gascoigne.retrieve_original` to its tools (it takes `raw_id`, optional `grep` and `lines`). The demos
+`demos/python/langgraph/auto.py` (an agent with an MCP server) and `demos/java/spring-ai/auto` show
+it.
 
 ## Settings
 

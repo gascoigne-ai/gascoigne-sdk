@@ -86,4 +86,12 @@ class GascoigneTest {
         var g = Gascoigne.builder().addr(serve(1, 200)).build();
         assertEquals("short", g.wrapTool("t", (String s) -> "big").apply("in"));
     }
+
+    @Test void retrieveNarrowsTheOriginal() throws Exception {
+        var g = Gascoigne.builder().addr(serve(1, 200)).build();
+        // The stub serves "original" for every raw id: a single line.
+        assertEquals("1: original", g.retrieve("abc", "", ""));
+        assertEquals("", g.retrieve("abc", "nomatch", ""));
+        assertTrue(g.retrieve("abc", "(", "").startsWith("Bad selection"));
+    }
 }
