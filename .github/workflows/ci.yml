@@ -12,14 +12,14 @@ jobs:
       matrix:
         task: [style, py:check, ts:check, go:check, java:check, dotnet:check, rust:check]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v2
       - run: mise run ${{ matrix.task }}
   e2e:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with: { repository: gascoigne-ai/gascoigne-cli, path: cli }
       - uses: jdx/mise-action@v2
       - run: cd cli && go build -o ../gascoigne ./cmd/gascoigne

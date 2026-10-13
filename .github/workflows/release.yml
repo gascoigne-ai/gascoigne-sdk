@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: pypi
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v2
       - run: mise run py:check
       - run: cd python/gascoigne && uv build && uv publish --trusted-publishing always   # PyPI trusted publishing (OIDC)
@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: npm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v2
       - run: mise run ts:check
       - run: cd typescript && pnpm -r --filter "./packages/*" publish --access public --no-git-checks
@@ -36,7 +36,7 @@ jobs:
     if: startsWith(github.ref_name, 'go/v')
     runs-on: ubuntu-latest
     steps:                      # the Go proxy serves the tag itself; verify, then announce
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v2
       - run: mise run go:check
       - run: gh release create "$GITHUB_REF_NAME" --generate-notes
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: maven-central
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v2
       - run: mise run java:check
       - run: cd java && mvn -B -q package -DskipTests
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: nuget
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v2
       - run: mise run dotnet:check
       - run: cd dotnet && dotnet pack src/Gascoigne -c Release -o out
@@ -70,7 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: crates-io
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v2
       - run: mise run rust:check
       - run: cd rust && cargo publish
