@@ -46,9 +46,16 @@ run = [
 ]
 
 [tasks."dotnet:check"]
-description = "dotnet: format, analyzers as errors, tests"
+description = "dotnet: format, analyzers as errors, tests, and the demos build"
 dir = "dotnet"
-run = ["dotnet format --verify-no-changes src/Gascoigne", "dotnet test tests/Gascoigne.Tests"]
+run = [
+  "dotnet format --verify-no-changes src/Gascoigne",
+  "dotnet format --verify-no-changes src/Gascoigne.Extensions.AI",
+  "dotnet test tests/Gascoigne.Tests",
+  "dotnet test tests/Gascoigne.Extensions.AI.Tests",
+  "dotnet build ../demos/dotnet/microsoft-extensions-ai/wrap",
+  "dotnet build ../demos/dotnet/microsoft-extensions-ai/auto",
+]
 
 [tasks."rust:check"]
 description = "Rust: fmt, clippy (pedantic on the library), tests"
