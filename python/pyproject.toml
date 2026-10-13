@@ -1,0 +1,25 @@
+[project]
+name = "gascoigne-workspace"
+version = "0.0.0"
+requires-python = ">=3.10"
+
+[tool.uv.workspace]
+members = ["gascoigne", "integrations/*"]
+
+[tool.uv.sources]
+gascoigne = { workspace = true }
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-httpx>=0.35", "ruff>=0.8"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["gascoigne/tests"]
+markers = ["e2e: needs a real gascoigne binary"]
+addopts = "-m 'not e2e'"
