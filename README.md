@@ -38,14 +38,17 @@ search_logs = gascoigne.wrap_tool(search_logs)      # any tool function returnin
 
 ## Pick your language
 
+How to install each one, and the minimal code: [`docs/install.md`](docs/install.md).
+
+
 | | Install | Hook |
 |---|---|---|
-| **Python** | `uv add gascoigne` | `gascoigne.wrap_tool(fn)`; for LangChain tools `gascoigne.ext.langchain.optimize_tools(tools)` |
-| **TypeScript** | `pnpm add @gascoigne-ai/sdk` | `wrapTool(fn)`; for Vercel AI SDK `wrapTools(tools)` from `@gascoigne-ai/ai-sdk` |
-| **Go** | `go get github.com/gascoigne-ai/gascoigne-sdk/go` | `rt.WrapTool(tool)` or `gascoigne.WrapFunc(rt, name, fn)` |
-| **Java** | `ai.gascoigne:gascoigne` | `g.optimize(text, Attrs.tool(name))` inside Spring AI / LangChain4j tools, or `g.wrapTool(name, fn)` |
-| **.NET** | `dotnet add package Gascoigne` | `g.WrapTool(name, fn)` for Semantic Kernel and Microsoft.Extensions.AI tools |
-| **Rust** | `cargo add gascoigne` | `rt.wrap_tool(name, fn)` or `rt.optimize(text, &Attrs::tool(..))` |
+| **Python** | [wheel or git](docs/install.md#python) | `gascoigne.wrap_tool(fn)`; for LangChain tools `gascoigne.ext.langchain.optimize_tools(tools)` |
+| **TypeScript** | [GitHub Packages](docs/install.md#typescript) | `wrapTool(fn)`; for Vercel AI SDK `wrapTools(tools)` from `@gascoigne-ai/ai-sdk` |
+| **Go** | `go get github.com/gascoigne-ai/gascoigne-sdk/go@v0.1.0` ([notes](docs/install.md#go)) | `rt.WrapTool(tool)` or `gascoigne.WrapFunc(rt, name, fn)` |
+| **Java** | `ai.gascoigne:gascoigne` on [GitHub Packages](docs/install.md#java) | `g.optimize(text, Attrs.tool(name))` inside Spring AI / LangChain4j tools, or `g.wrapTool(name, fn)` |
+| **.NET** | `Gascoigne` on [GitHub Packages](docs/install.md#net) | `g.WrapTool(name, fn)` for Semantic Kernel and Microsoft.Extensions.AI tools |
+| **Rust** | [git tag](docs/install.md#rust) | `rt.wrap_tool(name, fn)` or `rt.optimize(text, &Attrs::tool(..))` |
 
 Every SDK has the same surface: `optimize`, `raw`, `proxy_base_url`, `stats`, `wrap_tool`, and an
 `on_result` observer. The contract is in [`spec/protocol.md`](spec/protocol.md).
@@ -151,7 +154,8 @@ mise run e2e        # against a real binary: GASCOIGNE_BIN=../gascoigne-cli/bin/
 ```
 
 Releases and registry credentials: [`docs/releasing.md`](docs/releasing.md). npm, Maven and NuGet
-packages are on GitHub Packages: [`docs/github-packages.md`](docs/github-packages.md). Rules for contributors:
+packages are on GitHub Packages: [`docs/github-packages.md`](docs/github-packages.md). Install
+guide: [`docs/install.md`](docs/install.md). Rules for contributors:
 [`.harness/rules.md`](.harness/rules.md).
 
 ## License

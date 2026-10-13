@@ -1,5 +1,7 @@
 # GitHub Packages
 
+Part of [`install.md`](install.md), which covers every language.
+
 Every `ts-v*`, `java-v*` and `dotnet-v*` release is also published to GitHub Packages, using the
 workflow's own token. GitHub Packages has no registry for Python, Rust or Go, so those come from the
 GitHub release assets (or PyPI, crates.io and the Go module proxy once published there).
