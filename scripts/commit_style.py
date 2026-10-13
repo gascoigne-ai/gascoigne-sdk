@@ -15,8 +15,13 @@ MAX_SUBJECT = 72
 
 
 def subjects(revision_range: str) -> list[str]:
+    """Subjects of the commits people wrote: merge commits and bot commits are not checked."""
     out = subprocess.run(
-        ["git", "log", "--format=%s", revision_range], capture_output=True, text=True, check=True
+        ["git", "log", "--no-merges", "--perl-regexp", "--author=^((?!\\[bot\\]).)*$",
+         "--format=%s", revision_range],
+        capture_output=True,
+        text=True,
+        check=True,
     )
     return out.stdout.splitlines()
 
