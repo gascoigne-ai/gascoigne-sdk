@@ -1,0 +1,12 @@
+[package]
+name = "gascoigne"
+version = "0.1.0"
+edition = "2021"
+description = "Embed gascoigne token optimization in agent frameworks"
+license = "Apache-2.0"
+repository = "https://github.com/gascoigne-ai/gascoigne-sdk"
+readme = "README.md"
+
+[dependencies]
+serde_json = "1"
+ureq = { version = "2", features = ["json"] }

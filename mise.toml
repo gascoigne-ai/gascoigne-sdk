@@ -10,19 +10,44 @@ dotnet = "9"
 rust = "stable"
 
 [tasks."py:check"]
-description = "Python: lint, types, tests"
+description = "Python: lint, tests"
 dir = "python"
 run = ["uv sync --all-packages", "uv run ruff check .", "uv run ruff format --check .", "uv run pytest -q"]
 
+[tasks."ts:check"]
+description = "TypeScript: install, build, typecheck, tests"
+dir = "typescript"
+run = ["pnpm install --frozen-lockfile", "pnpm -r build", "pnpm check"]
+
+[tasks."go:check"]
+description = "Go: vet, tests"
+dir = "go"
+run = ["go vet ./...", "go test ./...", "go -C demos vet ./..."]
+
+[tasks."java:check"]
+description = "Java: tests"
+dir = "java"
+run = "mvn -q -B test"
+
+[tasks."dotnet:check"]
+description = "dotnet: tests"
+dir = "dotnet"
+run = "dotnet test tests/Gascoigne.Tests"
+
+[tasks."rust:check"]
+description = "Rust: fmt, clippy, tests"
+dir = "rust"
+run = ["cargo fmt --check", "cargo clippy --all-targets -- -D warnings", "cargo test"]
+
 [tasks.check]
 description = "Everything that must pass before a change is done"
-depends = ["py:check"]
+depends = ["py:check", "ts:check", "go:check", "java:check", "dotnet:check", "rust:check"]
 
 [tasks.e2e]
-description = "Python tests against a real gascoigne binary (needs `gascoigne` on PATH)"
+description = "Python tests against a real gascoigne binary (GASCOIGNE_BIN or PATH)"
 dir = "python"
 run = "uv run pytest -q -m e2e"
 
-[tasks."demo:install"]
-description = "Install the demo environment (one venv per run via uv)"
-run = "uv sync --project demos/python --all-extras"
+[tasks.demo]
+description = "Dry-run every demo (no LLM call); needs gascoigne on PATH"
+run = "bash scripts/demos.sh"
