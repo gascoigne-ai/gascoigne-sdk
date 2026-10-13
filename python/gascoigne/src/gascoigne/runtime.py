@@ -41,10 +41,18 @@ class Result:
 class Runtime:
     """Finds the CLI, makes sure its server runs, and optimizes text through it."""
 
-    def __init__(self, *, agent: str = "", session: str = "", timeout: float = 5.0) -> None:
+    def __init__(
+        self,
+        *,
+        agent: str = "",
+        session: str = "",
+        timeout: float = 5.0,
+        on_result: Callable[[str, Result], None] | None = None,
+    ) -> None:
         self.agent = agent
         self.session = session
         self.timeout = timeout
+        self.on_result = on_result  # called with (original, result) after each optimized call
         self._lock = threading.Lock()
         self._state: str | None = None  # None: not probed yet, "ready" or "bypass"
         self._failures = 0
@@ -158,6 +166,11 @@ class Runtime:
             self._failures = 0
             self._raw_tokens += out.raw_tokens
             self._out_tokens += out.out_tokens or out.raw_tokens
+        if self.on_result:
+            try:
+                self.on_result(text, out)
+            except Exception as e:  # an observer must never break the host app
+                log.debug("on_result failed: %s", e)
         return out
 
     def stats(self) -> dict[str, int]:
@@ -215,10 +228,16 @@ def default() -> Runtime:
     return _default
 
 
-def init(*, agent: str = "", session: str = "", timeout: float = 5.0) -> Runtime:
+def init(
+    *,
+    agent: str = "",
+    session: str = "",
+    timeout: float = 5.0,
+    on_result: Callable[[str, Result], None] | None = None,
+) -> Runtime:
     """Configure the process-wide runtime and return it."""
     global _default
-    _default = Runtime(agent=agent, session=session, timeout=timeout)
+    _default = Runtime(agent=agent, session=session, timeout=timeout, on_result=on_result)
     return _default
 
 

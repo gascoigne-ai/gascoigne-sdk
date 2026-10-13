@@ -6,7 +6,7 @@ from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 
-common.rt()
+common.rt("langchain")
 search_logs = tool(common.search_logs)
 (search_logs,) = optimize_tools([search_logs])
 llm = ChatOpenAI(model=common.MODEL, base_url=common.BASE_URL, api_key=common.api_key())
@@ -20,5 +20,4 @@ else:
     msgs.append(ai)
     for call in ai.tool_calls:
         msgs.append(ToolMessage(search_logs.invoke(call["args"]), tool_call_id=call["id"]))
-    print(llm.invoke(msgs).content)
-    common.report()
+    common.report(str(llm.invoke(msgs).content))

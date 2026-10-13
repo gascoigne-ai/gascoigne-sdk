@@ -1,0 +1,19 @@
+{
+  "name": "@gascoigne/sdk",
+  "version": "0.1.0",
+  "description": "Embed gascoigne token optimization in agent frameworks",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "files": ["dist"],
+  "repository": "github:gascoigne-ai/gascoigne-sdk",
+  "publishConfig": { "access": "public", "provenance": true },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  }
+}

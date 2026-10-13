@@ -4,7 +4,7 @@ import common
 import gascoigne
 from smolagents import CodeAgent, OpenAIServerModel, tool
 
-common.rt()
+common.rt("smolagents")
 wrapped = gascoigne.wrap_tool(common.search_logs)
 search_logs = tool(wrapped)
 model = OpenAIServerModel(
@@ -15,5 +15,4 @@ agent = CodeAgent(tools=[search_logs], model=model)
 if common.dry():
     common.dry_call(wrapped)
 else:
-    print(agent.run(common.PROMPT))
-    common.report()
+    common.report(str(agent.run(common.PROMPT)))

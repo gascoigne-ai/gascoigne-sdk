@@ -4,6 +4,10 @@ python = "3.12"
 node = "22"
 pnpm = "10"
 go = "1.27"
+java = "temurin-21"
+maven = "3"
+dotnet = "9"
+rust = "stable"
 
 [tasks."py:check"]
 description = "Python: lint, types, tests"

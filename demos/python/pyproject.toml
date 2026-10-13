@@ -2,11 +2,11 @@
 name = "gascoigne-demos"
 version = "0.0.0"
 requires-python = ">=3.10"
-dependencies = ["gascoigne"]
+dependencies = ["gascoigne", "rich>=13"]
 
 [project.optional-dependencies]
 langchain = ["langchain-openai>=0.3", "langchain-core>=0.3"]
-langgraph = ["langgraph>=0.4", "langchain-openai>=0.3"]
+langgraph = ["langgraph>=1.0", "langchain>=1.0", "langchain-openai>=0.3"]
 agno = ["agno", "openai"]
 adk = ["google-adk", "litellm"]
 openai-agents = ["openai-agents"]

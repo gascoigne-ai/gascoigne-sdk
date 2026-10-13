@@ -11,7 +11,7 @@ from agents import (
 )
 from openai import AsyncOpenAI
 
-common.rt()
+common.rt("openai-agents")
 set_tracing_disabled(True)
 wrapped = gascoigne.wrap_tool(common.search_logs)
 search_logs = function_tool(wrapped)
@@ -25,5 +25,4 @@ agent = Agent(
 if common.dry():
     common.dry_call(wrapped)
 else:
-    print(Runner.run_sync(agent, common.PROMPT).final_output)
-    common.report()
+    common.report(str(Runner.run_sync(agent, common.PROMPT).final_output))
