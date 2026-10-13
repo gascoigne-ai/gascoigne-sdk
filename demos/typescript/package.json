@@ -1,0 +1,36 @@
+{
+  "name": "gascoigne-ts-demos",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "ai-sdk:wrap": "tsx ai-sdk/wrap.ts",
+    "ai-sdk:proxy": "tsx ai-sdk/proxy.ts",
+    "langchain:wrap": "tsx langchain/wrap.ts",
+    "langchain:proxy": "tsx langchain/proxy.ts",
+    "openai-agents:wrap": "tsx openai-agents/wrap.ts",
+    "openai-agents:proxy": "tsx openai-agents/proxy.ts",
+    "mastra:wrap": "tsx mastra/wrap.ts",
+    "mastra:proxy": "tsx mastra/proxy.ts"
+  },
+  "dependencies": {
+    "@gascoigne/sdk": "link:../../typescript/packages/sdk",
+    "@gascoigne/ai-sdk": "link:../../typescript/packages/ai-sdk",
+    "@langchain/core": "^1.0.0",
+    "@langchain/openai": "^1.0.0",
+    "@mastra/core": "latest",
+    "@openai/agents": "latest",
+    "@openrouter/ai-sdk-provider": "latest",
+    "ai": "latest",
+    "langchain": "^1.0.0",
+    "openai": "latest",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "@biomejs/biome": "^2.0.0",
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  }
+}

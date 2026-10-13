@@ -22,19 +22,28 @@ run = [
 ]
 
 [tasks."ts:check"]
-description = "TypeScript: Biome, tsc, tests"
+description = "TypeScript: Biome, tsc, tests, and the demos typecheck"
 dir = "typescript"
-run = ["pnpm install --frozen-lockfile", "pnpm -r build", "pnpm check"]
+run = [
+  "pnpm install --frozen-lockfile",
+  "pnpm -r build",
+  "pnpm check",
+  "cd ../demos/typescript && pnpm install && pnpm lint && pnpm typecheck",
+]
 
 [tasks."go:check"]
 description = "Go: gofmt, golangci-lint, tests"
 dir = "go"
-run = ["gofmt -l -e . | (! grep .)", "golangci-lint run ./...", "cd demos && golangci-lint run -c ../.golangci.yml ./...", "go test ./..."]
+run = ["gofmt -l -e . | (! grep .)", "golangci-lint run ./...", "cd ../demos/go && golangci-lint run -c ../../go/.golangci.yml ./...", "go test ./..."]
 
 [tasks."java:check"]
-description = "Java: -Xlint:all -Werror, tests, and the demos compile"
+description = "Java: -Xlint:all -Werror, tests, Spring AI module, and the demos compile"
 dir = "java"
-run = ["mvn -q -B install", "mvn -q -B -f demos/pom.xml package -DskipTests"]
+run = [
+  "mvn -q -B install",
+  "mvn -q -B -f spring-ai/pom.xml install",
+  "mvn -q -B -f ../demos/java/pom.xml package -DskipTests",
+]
 
 [tasks."dotnet:check"]
 description = "dotnet: format, analyzers as errors, tests"
