@@ -16,7 +16,7 @@ jobs:
       - uses: jdx/mise-action@v2
       - run: mise run py:check
       - run: cd python/gascoigne && uv build && uv publish --trusted-publishing always   # PyPI trusted publishing (OIDC)
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with: { subject-path: python/gascoigne/dist/* }
       - run: gh release create "$GITHUB_REF_NAME" python/gascoigne/dist/* --generate-notes
 
