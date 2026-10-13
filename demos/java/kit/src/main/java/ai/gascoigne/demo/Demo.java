@@ -39,8 +39,8 @@ public final class Demo {
 
     /** The noisy tool: 400 near-identical lines and one error. */
     public static String noisyLogs() {
-        // Request ids differ per run, as in real logs; the proxy caches identical results.
-        long firstId = (System.currentTimeMillis() / 1000) % 1_000_000;
+        // Request ids differ per call, as in real logs; the proxy caches identical results.
+        long firstId = java.util.concurrent.ThreadLocalRandom.current().nextInt(900_000);
         List<String> lines = IntStream.range(0, 400)
                 .mapToObj(i -> LINE.formatted(i / 60, i % 60, i % 7, firstId + i, i % 90))
                 .collect(Collectors.toCollection(ArrayList::new));

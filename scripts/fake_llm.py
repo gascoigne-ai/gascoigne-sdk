@@ -10,6 +10,7 @@ the request that carries the tool result gets a final answer. Usage:
 """
 
 import json
+import os
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -25,6 +26,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         body = json.loads(self.read_body())
         has_result = any(m.get("role") == "tool" for m in body.get("messages", []))
+        if os.environ.get("FAKE_LLM_LOG"):
+            tools = [m for m in body.get("messages", []) if m.get("role") == "tool"]
+            sizes = [len(str(m.get("content"))) for m in tools]
+            with open(os.environ["FAKE_LLM_LOG"], "a") as log:
+                log.write(f"{self.path} tool_sizes={sizes} stream={body.get('stream')}\n")
         message = {"role": "assistant", "content": ANSWER if has_result else None}
         if not has_result:
             message["tool_calls"] = [TOOL_CALL]

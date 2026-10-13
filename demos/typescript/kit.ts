@@ -38,8 +38,8 @@ process.env.GASCOIGNE_SERVER_ADDR ??= "127.0.0.1:7879";
 
 export function searchLogs(): string {
   const pad = (n: number) => String(n).padStart(2, "0");
-  // Request ids differ per run, as in real logs; the proxy caches identical results.
-  const firstId = Math.floor(Date.now() / 1000) % 1_000_000;
+  // Request ids differ per call, as in real logs; the proxy caches identical results.
+  const firstId = Math.floor(Math.random() * 900_000);
   const lines = Array.from({ length: 400 }, (_, i) => {
     const time = `12:${pad(Math.floor(i / 60))}:${pad(i % 60)}`;
     const id = firstId + i;
