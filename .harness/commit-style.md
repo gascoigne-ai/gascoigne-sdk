@@ -3,7 +3,8 @@
 Same as `gascoigne-cli`, so both repos read alike.
 
 ## Subject
-`<type>(<scope>): <what changed, lower case, no full stop>`, at most 72 characters.
+`<type>(<scope>): <what changed, no full stop>`, at most 72 characters. The description starts lower
+case unless it opens with a name or identifier (`Spring`, `UseGascoigne`).
 
 - Types: `feat`, `fix`, `docs`, `test`, `refactor`, `build`, `ci`, `release`.
 - Scope is the area touched, short and lower case: a language (`python`, `typescript`, `go`, `java`,
