@@ -8,36 +8,48 @@ java = "temurin-21"
 maven = "3"
 dotnet = "9"
 rust = "stable"
+golangci-lint = "latest"
 
 [tasks."py:check"]
-description = "Python: lint, tests"
+description = "Python: ruff, pyright (strict), tests"
 dir = "python"
-run = ["uv sync --all-packages", "uv run ruff check .", "uv run ruff format --check .", "uv run pytest -q"]
+run = [
+  "uv sync --all-packages",
+  "uv run ruff check . ../demos/python",
+  "uv run ruff format --check . ../demos/python",
+  "uv run pyright",
+  "uv run pytest -q",
+]
 
 [tasks."ts:check"]
-description = "TypeScript: install, build, typecheck, tests"
+description = "TypeScript: Biome, tsc, tests"
 dir = "typescript"
 run = ["pnpm install --frozen-lockfile", "pnpm -r build", "pnpm check"]
 
 [tasks."go:check"]
-description = "Go: vet, tests"
+description = "Go: gofmt, golangci-lint, tests"
 dir = "go"
-run = ["go vet ./...", "go test ./...", "go -C demos vet ./..."]
+run = ["gofmt -l -e . | (! grep .)", "golangci-lint run ./...", "cd demos && golangci-lint run -c ../.golangci.yml ./...", "go test ./..."]
 
 [tasks."java:check"]
-description = "Java: tests"
+description = "Java: compile with -Xlint:all -Werror, tests"
 dir = "java"
 run = "mvn -q -B test"
 
 [tasks."dotnet:check"]
-description = "dotnet: tests"
+description = "dotnet: format, analyzers as errors, tests"
 dir = "dotnet"
-run = "dotnet test tests/Gascoigne.Tests"
+run = ["dotnet format --verify-no-changes src/Gascoigne", "dotnet test tests/Gascoigne.Tests"]
 
 [tasks."rust:check"]
-description = "Rust: fmt, clippy, tests"
+description = "Rust: fmt, clippy (pedantic on the library), tests"
 dir = "rust"
-run = ["cargo fmt --check", "cargo clippy --all-targets -- -D warnings", "cargo test"]
+run = [
+  "cargo fmt --check",
+  "cargo clippy --all-targets -- -D warnings",
+  "cargo clippy --lib --examples -- -D warnings -W clippy::pedantic",
+  "cargo test",
+]
 
 [tasks.check]
 description = "Everything that must pass before a change is done"

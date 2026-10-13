@@ -63,7 +63,7 @@ public sealed class ClientTests : IDisposable
         Assert.Contains("\"agent\":\"demo\"", _posts[0]);
         Assert.Contains("\"tool\":\"grep\"", _posts[0]);
         Assert.Equal(new[] { "abc" }, seen);
-        Assert.Equal((100L, 5L), g.Stats());
+        Assert.Equal(new Stats(100, 5), g.Stats());
         Assert.EndsWith("/v1", await g.ProxyBaseUrlAsync());
         Assert.Equal("original", await g.RawAsync("abc"));
     }

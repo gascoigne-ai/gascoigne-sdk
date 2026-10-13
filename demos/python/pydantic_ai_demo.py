@@ -1,17 +1,16 @@
-"""Pydantic AI: OpenRouter provider."""
+"""Pydantic AI with the OpenRouter provider. Two added lines."""
 
-import common
 import gascoigne
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openrouter import OpenRouterProvider
 
-common.rt("pydantic-ai")
-search_logs = gascoigne.wrap_tool(common.search_logs)
-model = OpenAIChatModel(common.MODEL, provider=OpenRouterProvider(api_key=common.api_key()))
-agent = Agent(model, tools=[search_logs])
+from demo_kit import PROMPT, openrouter, run, search_logs
 
-if common.dry():
-    common.dry_call(search_logs)
-else:
-    common.report(str(agent.run_sync(common.PROMPT).output))
+gascoigne.init(agent="pydantic-ai")  # 1. start gascoigne
+search_logs = gascoigne.wrap_tool(search_logs)  # 2. wrap the tool
+
+cfg = openrouter()
+model = OpenAIChatModel(cfg.model, provider=OpenRouterProvider(api_key=cfg.api_key))
+agent = Agent(model, tools=[search_logs])
+run(lambda: agent.run_sync(PROMPT).output, search_logs)

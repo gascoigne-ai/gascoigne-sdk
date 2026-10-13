@@ -1,18 +1,14 @@
-"""smolagents: OpenAI-compatible server model."""
+"""smolagents. Two added lines."""
 
-import common
 import gascoigne
 from smolagents import CodeAgent, OpenAIServerModel, tool
 
-common.rt("smolagents")
-wrapped = gascoigne.wrap_tool(common.search_logs)
-search_logs = tool(wrapped)
-model = OpenAIServerModel(
-    model_id=common.MODEL, api_base=common.BASE_URL, api_key=common.api_key()
-)
-agent = CodeAgent(tools=[search_logs], model=model)
+from demo_kit import PROMPT, openrouter, run, search_logs
 
-if common.dry():
-    common.dry_call(wrapped)
-else:
-    common.report(str(agent.run(common.PROMPT)))
+gascoigne.init(agent="smolagents")  # 1. start gascoigne
+search_logs = gascoigne.wrap_tool(search_logs)  # 2. wrap the tool
+
+cfg = openrouter()
+model = OpenAIServerModel(model_id=cfg.model, api_base=cfg.base_url, api_key=cfg.api_key)
+agent = CodeAgent(tools=[tool(search_logs)], model=model)
+run(lambda: agent.run(PROMPT), search_logs)

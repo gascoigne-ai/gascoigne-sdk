@@ -2,7 +2,7 @@
 name = "gascoigne-demos"
 version = "0.0.0"
 requires-python = ">=3.10"
-dependencies = ["gascoigne", "rich>=13"]
+dependencies = ["gascoigne", "rich>=13", "python-dotenv>=1"]
 
 [project.optional-dependencies]
 langchain = ["langchain-openai>=0.3", "langchain-core>=0.3"]
@@ -25,3 +25,10 @@ conflicts = [[
   { extra = "openai-agents" }, { extra = "crewai" }, { extra = "llamaindex" },
   { extra = "pydantic-ai" }, { extra = "smolagents" },
 ]]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

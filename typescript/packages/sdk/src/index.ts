@@ -30,6 +30,27 @@ export interface Attrs {
   model?: string;
 }
 
+/** Body of `POST /sdk/v1/optimize`. */
+interface OptimizeRequest extends Attrs {
+  text: string;
+  agent?: string;
+  session?: string;
+}
+
+/** Response of `POST /sdk/v1/optimize`. */
+interface OptimizeResponse {
+  text: string;
+  raw_id?: string;
+  raw_tokens?: number;
+  out_tokens?: number;
+  skipped?: string;
+}
+
+export interface Stats {
+  rawTokens: number;
+  outTokens: number;
+}
+
 export interface Options {
   agent?: string;
   session?: string;
@@ -55,6 +76,17 @@ function findOnPath(name: string): string | undefined {
   return undefined;
 }
 
+function toResult(d: OptimizeResponse): Result {
+  if (typeof d.text !== "string") throw new Error("bad response");
+  return {
+    text: d.text,
+    rawId: d.raw_id ?? "",
+    rawTokens: d.raw_tokens ?? 0,
+    outTokens: d.out_tokens ?? 0,
+    skipped: d.skipped ?? "",
+  };
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class Runtime {
@@ -63,10 +95,18 @@ export class Runtime {
   private failures = 0;
   private pausedUntil = 0;
   private warned = false;
-  private rawTokens = 0;
-  private outTokens = 0;
+  private total: Stats = { rawTokens: 0, outTokens: 0 };
 
   constructor(private readonly opts: Options = {}) {}
+
+  get agent(): string {
+    return this.opts.agent ?? "";
+  }
+
+  /** Replace the observer called with (original, result) after each optimized call. */
+  setOnResult(fn: Options["onResult"]): void {
+    this.opts.onResult = fn;
+  }
 
   get addr(): string {
     return process.env.GASCOIGNE_SERVER_ADDR || DEFAULT_ADDR;
@@ -110,9 +150,18 @@ export class Runtime {
     try {
       await new Promise<void>((resolve, reject) => {
         const p = spawn(exe, ["server", "start"], { stdio: "ignore" });
-        const t = setTimeout(() => (p.kill(), resolve()), 10_000);
-        p.on("error", (e) => (clearTimeout(t), reject(e)));
-        p.on("exit", () => (clearTimeout(t), resolve()));
+        const t = setTimeout(() => {
+          p.kill();
+          resolve();
+        }, 10_000);
+        p.on("error", (e) => {
+          clearTimeout(t);
+          reject(e);
+        });
+        p.on("exit", () => {
+          clearTimeout(t);
+          resolve();
+        });
       });
     } catch (e) {
       this.warn(`could not start gascoigne server (${e}); running without optimization`);
@@ -147,39 +196,34 @@ export class Runtime {
   async optimizeResult(text: string, attrs: Attrs = {}): Promise<Result> {
     const same: Result = { text, rawId: "", rawTokens: 0, outTokens: 0, skipped: "" };
     if (!text || !(await this.ready())) return same;
-    const body: Record<string, string> = { text };
-    if (this.opts.agent) body.agent = this.opts.agent;
-    if (this.opts.session) body.session = this.opts.session;
-    for (const [k, v] of Object.entries(attrs)) if (v) body[k] = v;
+    const request: OptimizeRequest = { text, agent: this.opts.agent, session: this.opts.session, ...attrs };
     try {
       const r = await fetch(`${this.baseUrl}/sdk/v1/optimize`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(request), // undefined fields are not serialized
         signal: AbortSignal.timeout(this.opts.timeoutMs ?? 5000),
       });
       if (!r.ok) throw new Error(`status ${r.status}`);
-      const d = (await r.json()) as Record<string, unknown>;
-      if (typeof d.text !== "string") throw new Error("bad response");
-      const out: Result = {
-        text: d.text,
-        rawId: (d.raw_id as string) ?? "",
-        rawTokens: (d.raw_tokens as number) ?? 0,
-        outTokens: (d.out_tokens as number) ?? 0,
-        skipped: (d.skipped as string) ?? "",
-      };
+      const out = toResult((await r.json()) as OptimizeResponse);
       this.failures = 0;
-      this.rawTokens += out.rawTokens;
-      this.outTokens += out.outTokens || out.rawTokens;
-      try {
-        this.opts.onResult?.(text, out);
-      } catch {
-        /* an observer must never break the host app */
-      }
+      this.total = {
+        rawTokens: this.total.rawTokens + out.rawTokens,
+        outTokens: this.total.outTokens + (out.outTokens || out.rawTokens),
+      };
+      this.notify(text, out);
       return out;
     } catch {
       this.failed();
       return same;
+    }
+  }
+
+  private notify(original: string, result: Result): void {
+    try {
+      this.opts.onResult?.(original, result);
+    } catch {
+      /* an observer must never break the host app */
     }
   }
 
@@ -207,8 +251,8 @@ export class Runtime {
     return api === "openai" ? `${this.baseUrl}/v1` : this.baseUrl;
   }
 
-  stats(): { rawTokens: number; outTokens: number } {
-    return { rawTokens: this.rawTokens, outTokens: this.outTokens };
+  stats(): Stats {
+    return this.total;
   }
 
   /** Wrap a tool function so string results are optimized. */

@@ -6,6 +6,7 @@ package gascoigne
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -40,6 +41,32 @@ type Attrs struct {
 	Tool, Cmd, URL, Query, Model string
 }
 
+// optimizeRequest is the body of POST /sdk/v1/optimize.
+type optimizeRequest struct {
+	Text    string `json:"text"`
+	Agent   string `json:"agent,omitempty"`
+	Session string `json:"session,omitempty"`
+	Tool    string `json:"tool,omitempty"`
+	Cmd     string `json:"cmd,omitempty"`
+	URL     string `json:"url,omitempty"`
+	Query   string `json:"query,omitempty"`
+	Model   string `json:"model,omitempty"`
+}
+
+// health is the response of GET /sdk/v1/health.
+type health struct {
+	Version string `json:"version"`
+	Proto   int    `json:"proto"`
+}
+
+type availability int
+
+const (
+	unknown availability = iota
+	available
+	unavailable
+)
+
 // Options configure a Runtime. The zero value works.
 type Options struct {
 	Agent, Session string
@@ -55,7 +82,7 @@ type Runtime struct {
 	client *http.Client
 
 	mu         sync.Mutex
-	state      string // "", "ready" or "bypass"
+	state      availability
 	failures   int
 	pausedTill time.Time
 	warned     bool
@@ -103,10 +130,8 @@ func (r *Runtime) healthy(ctx context.Context) bool {
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
-	var h struct {
-		Proto int `json:"proto"`
-	}
+	defer func() { _ = resp.Body.Close() }()
+	var h health
 	if resp.StatusCode != http.StatusOK || json.NewDecoder(resp.Body).Decode(&h) != nil {
 		return false
 	}
@@ -148,13 +173,13 @@ func (r *Runtime) Ready(ctx context.Context) bool {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.state == "" {
-		r.state = "bypass"
+	if r.state == unknown {
+		r.state = unavailable
 		if r.healthy(ctx) || r.startServer(ctx) {
-			r.state = "ready"
+			r.state = available
 		}
 	}
-	return r.state == "ready" && time.Now().After(r.pausedTill)
+	return r.state == available && time.Now().After(r.pausedTill)
 }
 
 func (r *Runtime) failed(err error) {
@@ -173,15 +198,14 @@ func (r *Runtime) OptimizeResult(ctx context.Context, text string, a Attrs) Resu
 	if text == "" || !r.Ready(ctx) {
 		return same
 	}
-	body := map[string]string{"text": text, "agent": r.opts.Agent, "session": r.opts.Session,
-		"tool": a.Tool, "cmd": a.Cmd, "url": a.URL, "query": a.Query, "model": a.Model}
-	for k, v := range body {
-		if v == "" {
-			delete(body, k)
-		}
+	body, err := json.Marshal(optimizeRequest{
+		Text: text, Agent: r.opts.Agent, Session: r.opts.Session,
+		Tool: a.Tool, Cmd: a.Cmd, URL: a.URL, Query: a.Query, Model: a.Model,
+	})
+	if err != nil {
+		return same
 	}
-	data, _ := json.Marshal(body)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL()+"/sdk/v1/optimize", bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL()+"/sdk/v1/optimize", bytes.NewReader(body))
 	if err != nil {
 		return same
 	}
@@ -191,32 +215,25 @@ func (r *Runtime) OptimizeResult(ctx context.Context, text string, a Attrs) Resu
 		r.failed(err)
 		return same
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	var out Result
 	if resp.StatusCode != http.StatusOK {
 		r.failed(fmt.Errorf("status %s", resp.Status))
 		return same
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil || out.Text == "" {
-		r.failed(fmt.Errorf("bad response: %v", err))
+		r.failed(fmt.Errorf("bad response: %w", err))
 		return same
 	}
 	r.mu.Lock()
 	r.failures = 0
 	r.rawTokens += out.RawTokens
-	r.outTokens += max(out.OutTokens, 0) + boolInt(out.OutTokens == 0)*out.RawTokens
+	r.outTokens += cmp.Or(out.OutTokens, out.RawTokens)
 	r.mu.Unlock()
 	if r.opts.OnResult != nil {
 		r.opts.OnResult(text, out)
 	}
 	return out
-}
-
-func boolInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }
 
 // Optimize returns the text the model should read.
@@ -238,7 +255,7 @@ func (r *Runtime) Raw(ctx context.Context, rawID string) string {
 		r.failed(err)
 		return ""
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	b, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
 		return ""

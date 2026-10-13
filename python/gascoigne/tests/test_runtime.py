@@ -2,6 +2,7 @@ import logging
 
 import httpx
 import pytest
+from gascoigne.models import Stats
 from gascoigne.runtime import PROTO, Runtime
 
 
@@ -108,4 +109,4 @@ def test_optimize_tools_wraps_func_and_coroutine(httpx_mock):
     rt = Runtime()
     tool = SimpleNamespace(name="t", func=lambda: "big", coroutine=None)
     (wrapped,) = optimize_tools([tool], rt)
-    assert wrapped.func() == "S" and rt.stats() == {"raw_tokens": 10, "out_tokens": 1}
+    assert wrapped.func() == "S" and rt.stats() == Stats(10, 1)

@@ -15,7 +15,7 @@ import (
 type fakeServer struct {
 	proto, status int
 	posts         atomic.Int32
-	last          map[string]string
+	last          optimizeRequest
 }
 
 func (f *fakeServer) serve(t *testing.T) {
@@ -23,14 +23,14 @@ func (f *fakeServer) serve(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/sdk/v1/health":
-			json.NewEncoder(w).Encode(map[string]any{"version": "t", "proto": f.proto})
+			_ = json.NewEncoder(w).Encode(map[string]any{"version": "t", "proto": f.proto})
 		case "/sdk/v1/optimize":
 			f.posts.Add(1)
-			json.NewDecoder(r.Body).Decode(&f.last)
+			_ = json.NewDecoder(r.Body).Decode(&f.last)
 			w.WriteHeader(f.status)
-			json.NewEncoder(w).Encode(Result{Text: "short", RawID: "abc", RawTokens: 100, OutTokens: 5})
+			_ = json.NewEncoder(w).Encode(Result{Text: "short", RawID: "abc", RawTokens: 100, OutTokens: 5})
 		default:
-			w.Write([]byte("original"))
+			_, _ = w.Write([]byte("original"))
 		}
 	}))
 	t.Cleanup(srv.Close)
@@ -82,7 +82,7 @@ func TestOptimizesThroughServer(t *testing.T) {
 	if res.Text != "short" || res.RawID != "abc" || seen != "abc" {
 		t.Fatalf("res %+v seen %q", res, seen)
 	}
-	if f.last["agent"] != "demo" || f.last["tool"] != "grep" {
+	if f.last.Agent != "demo" || f.last.Tool != "grep" {
 		t.Fatalf("request %v", f.last)
 	}
 	if raw, out := rt.Stats(); raw != 100 || out != 5 {

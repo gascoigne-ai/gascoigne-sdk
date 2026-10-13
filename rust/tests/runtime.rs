@@ -94,7 +94,13 @@ fn behaves() {
         req.contains(r#""agent":"demo""#) && req.contains(r#""tool":"grep""#),
         "{req}"
     );
-    assert_eq!(rt.stats(), (100, 5));
+    assert_eq!(
+        rt.stats(),
+        gascoigne::Stats {
+            raw_tokens: 100,
+            out_tokens: 5
+        }
+    );
     assert!(rt.proxy_base_url("openai").unwrap().ends_with("/v1"));
     assert_eq!(rt.raw("abc"), "original");
     assert_eq!(posts.load(Ordering::SeqCst), 1);

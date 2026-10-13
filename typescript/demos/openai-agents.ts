@@ -1,22 +1,35 @@
-/** OpenAI Agents SDK for JS, chat-completions pointed at OpenRouter. */
-import { wrapTool } from "@gascoigne/sdk";
-import { Agent, run, setDefaultOpenAIClient, setOpenAIAPI, setTracingDisabled, tool } from "@openai/agents";
+/** OpenAI Agents SDK for JS, chat completions via OpenRouter. Two added lines. */
+import { init, wrapTool } from "@gascoigne/sdk";
+import {
+  Agent,
+  run as runAgent,
+  setDefaultOpenAIClient,
+  setOpenAIAPI,
+  setTracingDisabled,
+  tool,
+} from "@openai/agents";
 import OpenAI from "openai";
 import { z } from "zod";
-import * as common from "./common.js";
+import { openrouter, PROMPT, run, searchLogs } from "./kit.js";
 
-common.runtime("openai-agents-js");
+init({ agent: "openai-agents-js" }); // 1. start gascoigne
+const logs = wrapTool(searchLogs, "search_logs"); // 2. wrap the tool
+
+const { model, apiKey, baseURL } = openrouter();
 setTracingDisabled(true);
 setOpenAIAPI("chat_completions");
-setDefaultOpenAIClient(new OpenAI({ baseURL: common.BASE_URL, apiKey: common.apiKey() }));
-const searchLogs = wrapTool(common.searchLogs, "search_logs");
-const logs = tool({
-  name: "search_logs",
-  description: "Return the recent service logs.",
-  parameters: z.object({}),
-  execute: async () => (await searchLogs()) as string,
+setDefaultOpenAIClient(new OpenAI({ baseURL, apiKey }));
+const agent = new Agent({
+  name: "logs",
+  model,
+  tools: [
+    tool({
+      name: "search_logs",
+      description: "Return the recent service logs.",
+      parameters: z.object({}),
+      execute: async () => String(await logs()),
+    }),
+  ],
 });
-const agent = new Agent({ name: "logs", model: common.MODEL, tools: [logs] });
 
-if (common.dry()) await common.dryCall(searchLogs);
-else common.report(String((await run(agent, common.PROMPT)).finalOutput));
+await run(async () => (await runAgent(agent, PROMPT)).finalOutput, logs);

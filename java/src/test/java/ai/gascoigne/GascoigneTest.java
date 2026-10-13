@@ -2,7 +2,6 @@ package ai.gascoigne;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import ai.gascoigne.Gascoigne.Attrs;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -37,16 +36,6 @@ class GascoigneTest {
 
     @AfterEach void stop() { if (server != null) server.stop(0); }
 
-    @Test void jsonRoundTrip() {
-        var enc = Json.encode(new java.util.LinkedHashMap<>(java.util.Map.of("text", "a\"b\n\\c")));
-        assertEquals("a\"b\n\\c", Json.decode(enc).get("text"));
-        var m = Json.decode("{\"text\":\"x\",\"n\":12,\"nested\":{\"a\":[1,2]},\"raw_id\":\"r\"}");
-        assertEquals("x", m.get("text"));
-        assertEquals("12", m.get("n"));
-        assertEquals("r", m.get("raw_id"));
-        assertNull(Json.decode("not json"));
-    }
-
     @Test void missingCliWarnsOnceAndPassesThrough() {
         var warnings = new ArrayList<String>();
         var g = Gascoigne.builder().addr("127.0.0.1:9").searchPath("").warn(warnings::add).build();
@@ -66,7 +55,7 @@ class GascoigneTest {
         assertEquals(5, res.outTokens());
         assertTrue(posts.get(0).contains("\"agent\":\"demo\"") && posts.get(0).contains("\"tool\":\"grep\""));
         assertEquals(List.of("abc"), seen);
-        assertArrayEquals(new long[] {100, 5}, g.stats());
+        assertEquals(new Stats(100, 5), g.stats());
         assertTrue(g.proxyBaseUrl("openai").orElseThrow().endsWith("/v1"));
         assertEquals("original", g.raw("abc"));
     }

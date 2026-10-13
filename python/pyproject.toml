@@ -10,7 +10,7 @@ members = ["gascoigne", "integrations/*"]
 gascoigne = { workspace = true }
 
 [dependency-groups]
-dev = ["pytest>=8", "pytest-httpx>=0.35", "ruff>=0.8"]
+dev = ["pytest>=8", "pytest-httpx>=0.35", "ruff>=0.8", "pyright>=1.1.400"]
 
 [tool.ruff]
 line-length = 100
@@ -23,3 +23,8 @@ select = ["E", "F", "I", "UP", "B"]
 testpaths = ["gascoigne/tests"]
 markers = ["e2e: needs a real gascoigne binary"]
 addopts = "-m 'not e2e'"
+
+[tool.pyright]
+include = ["gascoigne/src"]
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false

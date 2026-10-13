@@ -3,18 +3,22 @@
 //! Every call is safe: when the gascoigne CLI is missing or the server misbehaves, inputs come back
 //! unchanged and no error reaches the caller.
 
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
-const PROTO: i64 = 1;
+use serde::{Deserialize, Serialize};
+
+const PROTO: u32 = 1;
 const DEFAULT_ADDR: &str = "127.0.0.1:7878";
 const INSTALL_HINT: &str = "mise use -g go:github.com/gascoigne-ai/gascoigne-cli/cmd/gascoigne";
 const BREAKER_FAILURES: u32 = 5;
 const BREAKER_PAUSE: Duration = Duration::from_secs(60);
 
 /// One optimize call: `text` is what the model should read.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(default)]
 pub struct Result {
     pub text: String,
     pub raw_id: String,
@@ -34,6 +38,7 @@ pub struct Attrs {
 }
 
 impl Attrs {
+    #[must_use]
     pub fn tool(name: &str) -> Self {
         Attrs {
             tool: name.into(),
@@ -42,14 +47,53 @@ impl Attrs {
     }
 }
 
+/// Tokens (estimated) before and after, summed over a runtime's calls.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Stats {
+    pub raw_tokens: u64,
+    pub out_tokens: u64,
+}
+
+/// Body of `POST /sdk/v1/optimize`.
+#[derive(Serialize)]
+struct OptimizeRequest<'a> {
+    text: &'a str,
+    #[serde(skip_serializing_if = "str::is_empty")]
+    agent: &'a str,
+    #[serde(skip_serializing_if = "str::is_empty")]
+    tool: &'a str,
+    #[serde(skip_serializing_if = "str::is_empty")]
+    cmd: &'a str,
+    #[serde(skip_serializing_if = "str::is_empty")]
+    url: &'a str,
+    #[serde(skip_serializing_if = "str::is_empty")]
+    query: &'a str,
+    #[serde(skip_serializing_if = "str::is_empty")]
+    model: &'a str,
+}
+
+/// Response of `GET /sdk/v1/health`.
+#[derive(Deserialize)]
+struct Health {
+    proto: u32,
+}
+
 #[derive(Default)]
 struct State {
-    ready: Option<bool>,
+    available: Option<bool>,
     failures: u32,
     paused_until: Option<Instant>,
     warned: bool,
-    raw_tokens: u64,
-    out_tokens: u64,
+    stats: Stats,
+}
+
+impl State {
+    fn warn(&mut self, msg: &str) {
+        if !self.warned {
+            self.warned = true;
+            eprintln!("[gascoigne] {msg}");
+        }
+    }
 }
 
 /// Finds the CLI, makes sure its server runs, and optimizes text through it.
@@ -63,87 +107,83 @@ fn env(name: &str) -> String {
     std::env::var(name).unwrap_or_default()
 }
 
-fn find_on_path(name: &str) -> Option<std::path::PathBuf> {
+fn base_url() -> String {
+    let addr = env("GASCOIGNE_SERVER_ADDR");
+    format!(
+        "http://{}",
+        if addr.is_empty() { DEFAULT_ADDR } else { &addr }
+    )
+}
+
+fn find_cli() -> Option<PathBuf> {
+    let bin = env("GASCOIGNE_BIN");
+    if !bin.is_empty() {
+        return Some(bin.into());
+    }
     std::env::split_paths(&std::env::var_os("PATH")?)
-        .map(|d| d.join(name))
-        .find(|p| p.is_file())
+        .map(|dir| dir.join("gascoigne"))
+        .find(|path| path.is_file())
+}
+
+fn healthy(state: &mut State) -> bool {
+    let url = format!("{}/sdk/v1/health", base_url());
+    let Ok(response) = ureq::get(&url).timeout(Duration::from_millis(500)).call() else {
+        return false;
+    };
+    let Ok(health) = response.into_json::<Health>() else {
+        return false;
+    };
+    if health.proto != PROTO {
+        state.warn(&format!(
+            "server speaks proto {}, SDK {PROTO}; running without optimization",
+            health.proto
+        ));
+    }
+    health.proto == PROTO
+}
+
+fn start_server(state: &mut State) -> bool {
+    let Some(exe) = find_cli() else {
+        state.warn(&format!(
+            "gascoigne-cli not found on PATH; running without optimization. Install: {INSTALL_HINT}"
+        ));
+        return false;
+    };
+    let started = Command::new(&exe)
+        .args(["server", "start"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    if let Err(e) = started {
+        state.warn(&format!(
+            "could not start gascoigne server ({e}); running without optimization"
+        ));
+        return false;
+    }
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while Instant::now() < deadline {
+        if healthy(state) {
+            return true;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    state.warn("gascoigne server did not come up; running without optimization");
+    false
 }
 
 impl Runtime {
+    #[must_use]
     pub fn new(agent: &str) -> Self {
         Runtime {
             agent: agent.into(),
             timeout: Duration::from_secs(5),
-            state: Mutex::new(State::default()),
+            state: Mutex::default(),
         }
     }
 
-    fn base_url(&self) -> String {
-        let a = env("GASCOIGNE_SERVER_ADDR");
-        format!("http://{}", if a.is_empty() { DEFAULT_ADDR } else { &a })
-    }
-
-    fn warn(&self, st: &mut State, msg: &str) {
-        if !st.warned {
-            st.warned = true;
-            eprintln!("[gascoigne] {msg}");
-        }
-    }
-
-    fn healthy(&self, st: &mut State) -> bool {
-        let url = format!("{}/sdk/v1/health", self.base_url());
-        let Ok(resp) = ureq::get(&url).timeout(Duration::from_millis(500)).call() else {
-            return false;
-        };
-        let proto = resp
-            .into_json::<serde_json::Value>()
-            .ok()
-            .and_then(|v| v["proto"].as_i64());
-        if proto != Some(PROTO) {
-            self.warn(
-                st,
-                &format!(
-                    "server speaks proto {proto:?}, SDK {PROTO}; running without optimization"
-                ),
-            );
-            return false;
-        }
-        true
-    }
-
-    fn start_server(&self, st: &mut State) -> bool {
-        let exe = match env("GASCOIGNE_BIN") {
-            e if !e.is_empty() => Some(e.into()),
-            _ => find_on_path("gascoigne"),
-        };
-        let Some(exe) = exe else {
-            self.warn(st, &format!("gascoigne-cli not found on PATH; running without optimization. Install: {INSTALL_HINT}"));
-            return false;
-        };
-        let status = Command::new(&exe)
-            .args(["server", "start"])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
-        if let Err(e) = status {
-            self.warn(
-                st,
-                &format!("could not start gascoigne server ({e}); running without optimization"),
-            );
-            return false;
-        }
-        let end = Instant::now() + Duration::from_secs(3);
-        while Instant::now() < end {
-            if self.healthy(st) {
-                return true;
-            }
-            std::thread::sleep(Duration::from_millis(100));
-        }
-        self.warn(
-            st,
-            "gascoigne server did not come up; running without optimization",
-        );
-        false
+    /// A poisoned lock only means another thread panicked; the counters inside stay usable.
+    fn state(&self) -> MutexGuard<'_, State> {
+        self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     /// True when optimize calls will be tried. Probes once, then remembers.
@@ -151,69 +191,73 @@ impl Runtime {
         if env("GASCOIGNE_SDK") == "off" || env("GASCOIGNE_SERVER") == "off" {
             return false;
         }
-        let mut st = self.state.lock().unwrap();
-        if st.ready.is_none() {
-            let ok = self.healthy(&mut st) || self.start_server(&mut st);
-            st.ready = Some(ok);
+        let mut state = self.state();
+        if state.available.is_none() {
+            let available = healthy(&mut state) || start_server(&mut state);
+            state.available = Some(available);
         }
-        st.ready == Some(true) && st.paused_until.is_none_or(|t| Instant::now() >= t)
+        let available = state.available == Some(true);
+        available
+            && state
+                .paused_until
+                .is_none_or(|until| Instant::now() >= until)
+    }
+
+    fn record_failure(&self) {
+        let mut state = self.state();
+        state.failures += 1;
+        if state.failures >= BREAKER_FAILURES {
+            state.failures = 0;
+            state.paused_until = Some(Instant::now() + BREAKER_PAUSE);
+        }
+    }
+
+    fn post(&self, request: &OptimizeRequest) -> Option<Result> {
+        let url = format!("{}/sdk/v1/optimize", base_url());
+        let response = ureq::post(&url)
+            .timeout(self.timeout)
+            .send_json(request)
+            .ok()?;
+        response
+            .into_json::<Result>()
+            .ok()
+            .filter(|r| !r.text.is_empty())
     }
 
     /// Optimize `text`; on any problem the result carries the input unchanged.
     pub fn optimize_result(&self, text: &str, attrs: &Attrs) -> Result {
-        let same = Result {
+        let unchanged = Result {
             text: text.into(),
             ..Default::default()
         };
         if text.is_empty() || !self.ready() {
-            return same;
+            return unchanged;
         }
-        let mut body = serde_json::json!({ "text": text });
-        for (k, v) in [
-            ("agent", self.agent.as_str()),
-            ("tool", &attrs.tool),
-            ("cmd", &attrs.cmd),
-            ("url", &attrs.url),
-            ("query", &attrs.query),
-            ("model", &attrs.model),
-        ] {
-            if !v.is_empty() {
-                body[k] = v.into();
-            }
-        }
-        let url = format!("{}/sdk/v1/optimize", self.base_url());
-        let reply = ureq::post(&url)
-            .timeout(self.timeout)
-            .send_json(body)
-            .ok()
-            .and_then(|r| r.into_json::<serde_json::Value>().ok())
-            .filter(|v| v["text"].is_string());
-        let mut st = self.state.lock().unwrap();
-        let Some(v) = reply else {
-            st.failures += 1;
-            if st.failures >= BREAKER_FAILURES {
-                st.failures = 0;
-                st.paused_until = Some(Instant::now() + BREAKER_PAUSE);
-            }
-            return same;
+        let request = OptimizeRequest {
+            text,
+            agent: &self.agent,
+            tool: &attrs.tool,
+            cmd: &attrs.cmd,
+            url: &attrs.url,
+            query: &attrs.query,
+            model: &attrs.model,
         };
-        st.failures = 0;
-        let out = Result {
-            text: v["text"].as_str().unwrap_or_default().into(),
-            raw_id: v["raw_id"].as_str().unwrap_or_default().into(),
-            raw_tokens: v["raw_tokens"].as_u64().unwrap_or(0),
-            out_tokens: v["out_tokens"].as_u64().unwrap_or(0),
-            skipped: v["skipped"].as_str().unwrap_or_default().into(),
+        let Some(result) = self.post(&request) else {
+            self.record_failure();
+            return unchanged;
         };
-        st.raw_tokens += out.raw_tokens;
-        st.out_tokens += if out.out_tokens > 0 {
-            out.out_tokens
+        let mut state = self.state();
+        state.failures = 0;
+        state.stats.raw_tokens += result.raw_tokens;
+        state.stats.out_tokens += if result.out_tokens > 0 {
+            result.out_tokens
         } else {
-            out.raw_tokens
+            result.raw_tokens
         };
-        out
+        result
     }
 
+    /// The text the model should read.
     pub fn optimize(&self, text: &str, attrs: &Attrs) -> String {
         self.optimize_result(text, attrs).text
     }
@@ -223,12 +267,12 @@ impl Runtime {
         if !self.ready() {
             return String::new();
         }
-        let url = format!("{}/sdk/v1/raw/{raw_id}", self.base_url());
+        let url = format!("{}/sdk/v1/raw/{raw_id}", base_url());
         ureq::get(&url)
             .timeout(self.timeout)
             .call()
             .ok()
-            .and_then(|r| r.into_string().ok())
+            .and_then(|response| response.into_string().ok())
             .unwrap_or_default()
     }
 
@@ -238,7 +282,7 @@ impl Runtime {
         if !self.ready() {
             return None;
         }
-        let base = self.base_url();
+        let base = base_url();
         Some(if api == "openai" {
             format!("{base}/v1")
         } else {
@@ -247,17 +291,17 @@ impl Runtime {
     }
 
     /// Tokens (estimated) before and after, summed over this runtime's calls.
-    pub fn stats(&self) -> (u64, u64) {
-        let st = self.state.lock().unwrap();
-        (st.raw_tokens, st.out_tokens)
+    pub fn stats(&self) -> Stats {
+        self.state().stats
     }
 
     /// Wrap a tool function so the string it returns is optimized.
-    pub fn wrap_tool<A, F>(&self, name: &str, f: F) -> impl Fn(A) -> String + '_
-    where
-        F: Fn(A) -> String + 'static,
-    {
-        let name = name.to_string();
-        move |a| self.optimize(&f(a), &Attrs::tool(&name))
+    pub fn wrap_tool<'a, A>(
+        &'a self,
+        name: &str,
+        tool: impl Fn(A) -> String + 'a,
+    ) -> impl Fn(A) -> String + 'a {
+        let attrs = Attrs::tool(name);
+        move |arg| self.optimize(&tool(arg), &attrs)
     }
 }
