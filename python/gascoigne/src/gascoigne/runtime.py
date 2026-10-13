@@ -6,6 +6,7 @@ import functools
 import inspect
 import logging
 import os
+import re
 import shutil
 import subprocess
 import threading
@@ -16,6 +17,7 @@ from typing import Any, TypeVar, cast
 import httpx
 
 from gascoigne.models import OptimizeRequest, Result, Stats
+from gascoigne.retrieve import select
 
 log = logging.getLogger("gascoigne")
 
@@ -191,6 +193,19 @@ class Runtime:
             self._failed(e)
             return ""
 
+    def retrieve(self, raw_id: str, grep: str = "", lines: str = "") -> str:
+        """Part of an original, for a model that needs what was folded.
+
+        ``grep`` is a regex matched per line, ``lines`` a range such as "10-40". Both are optional.
+        """
+        original = self.raw(raw_id)
+        if not original:
+            return f"No original stored for {raw_id}."
+        try:
+            return select(original, grep, lines)
+        except (ValueError, re.error) as e:
+            return f"Bad selection: {e}"
+
     def proxy_base_url(self, api: str = "openai") -> str | None:
         """Base URL that routes an LLM client through the gascoigne proxy, or None in bypass.
 
@@ -258,3 +273,11 @@ def wrap_tool(fn: F, *, name: str = "") -> F:
 
 def stats() -> Stats:
     return _default.stats()
+
+
+def retrieve_original(raw_id: str, grep: str = "", lines: str = "") -> str:
+    """Get lines of the original output behind a "gascoigne raw <id>" hint.
+
+    Use ``grep`` (a regex) or ``lines`` (for example "10-40") to ask for just the part you need.
+    """
+    return _default.retrieve(raw_id, grep, lines)
