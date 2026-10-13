@@ -1,0 +1,27 @@
+[project]
+name = "gascoigne-demos"
+version = "0.0.0"
+requires-python = ">=3.10"
+dependencies = ["gascoigne"]
+
+[project.optional-dependencies]
+langchain = ["langchain-openai>=0.3", "langchain-core>=0.3"]
+langgraph = ["langgraph>=0.4", "langchain-openai>=0.3"]
+agno = ["agno", "openai"]
+adk = ["google-adk", "litellm"]
+openai-agents = ["openai-agents"]
+crewai = ["crewai"]
+llamaindex = ["llama-index-core", "llama-index-llms-openrouter"]
+pydantic-ai = ["pydantic-ai-slim[openai]"]
+smolagents = ["smolagents[openai]"]
+
+[tool.uv.sources]
+gascoigne = { path = "../../python/gascoigne", editable = true }
+
+[tool.uv]
+# One framework per run: their pins conflict (`uv run --extra langgraph ...`).
+conflicts = [[
+  { extra = "langchain" }, { extra = "langgraph" }, { extra = "agno" }, { extra = "adk" },
+  { extra = "openai-agents" }, { extra = "crewai" }, { extra = "llamaindex" },
+  { extra = "pydantic-ai" }, { extra = "smolagents" },
+]]

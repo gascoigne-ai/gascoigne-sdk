@@ -1,0 +1,4 @@
+version: 2
+updates:
+  - { package-ecosystem: uv, directory: /python, schedule: { interval: weekly } }
+  - { package-ecosystem: github-actions, directory: /, schedule: { interval: weekly } }

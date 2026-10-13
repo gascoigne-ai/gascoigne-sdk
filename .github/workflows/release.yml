@@ -1,0 +1,16 @@
+name: release
+on:
+  push: { tags: ["py-v*"] }
+permissions: { contents: write, id-token: write }
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: mise run check
+      - run: cd python/gascoigne && uv build
+      - run: cd python/gascoigne && uv publish --trusted-publishing always   # PyPI trusted publishing (OIDC)
+      - run: gh release create "$GITHUB_REF_NAME" python/gascoigne/dist/* --generate-notes
+        env: { GH_TOKEN: "${{ github.token }}" }

@@ -1,0 +1,24 @@
+[tools]
+uv = "latest"
+python = "3.12"
+node = "22"
+pnpm = "10"
+go = "1.27"
+
+[tasks."py:check"]
+description = "Python: lint, types, tests"
+dir = "python"
+run = ["uv sync --all-packages", "uv run ruff check .", "uv run ruff format --check .", "uv run pytest -q"]
+
+[tasks.check]
+description = "Everything that must pass before a change is done"
+depends = ["py:check"]
+
+[tasks.e2e]
+description = "Python tests against a real gascoigne binary (needs `gascoigne` on PATH)"
+dir = "python"
+run = "uv run pytest -q -m e2e"
+
+[tasks."demo:install"]
+description = "Install the demo environment (one venv per run via uv)"
+run = "uv sync --project demos/python --all-extras"
