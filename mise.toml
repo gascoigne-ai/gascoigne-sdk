@@ -69,3 +69,7 @@ run = "uv run pytest -q -m e2e"
 [tasks.demo]
 description = "Dry-run every demo (no LLM call); needs gascoigne on PATH"
 run = "bash scripts/demos.sh"
+
+[tasks."demo:proxy"]
+description = "Run the proxy-mode demos for real against a fake LLM (no API key)"
+run = "bash scripts/proxy-demos.sh"

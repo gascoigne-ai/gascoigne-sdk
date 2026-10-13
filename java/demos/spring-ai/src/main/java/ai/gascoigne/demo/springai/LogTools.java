@@ -15,7 +15,7 @@ class LogTools {
         this.gascoigne = gascoigne;
     }
 
-    @Tool(description = "Return the recent service logs.")
+    @Tool(name = "search_logs", description = "Return the recent service logs.")
     String searchLogs() {
         // 2. Optimize what the tool returns.
         return gascoigne.optimize(Demo.noisyLogs(), Attrs.tool("search_logs"));

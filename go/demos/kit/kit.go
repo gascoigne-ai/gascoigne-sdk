@@ -4,10 +4,15 @@ package kit
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/gascoigne-ai/gascoigne-sdk/go/gascoigne"
 )
@@ -24,7 +29,21 @@ const (
 // Config is the OpenRouter connection.
 type Config struct{ Model, APIKey, BaseURL string }
 
-func init() { loadDotenv() }
+func init() {
+	loadDotenv()
+	// A dedicated gascoigne server whose LLM proxy forwards to OpenRouter (see gascoigne.yaml).
+	if _, file, _, ok := runtime.Caller(0); ok {
+		config := filepath.Join(filepath.Dir(file), "..", "..", "gascoigne.yaml")
+		setDefaultEnv("GASCOIGNE_CONFIG", config)
+	}
+	setDefaultEnv("GASCOIGNE_SERVER_ADDR", "127.0.0.1:7879")
+}
+
+func setDefaultEnv(key, value string) {
+	if os.Getenv(key) == "" {
+		_ = os.Setenv(key, value)
+	}
+}
 
 // loadDotenv reads the nearest .env, walking up from the working directory; real env wins.
 func loadDotenv() {
@@ -78,12 +97,14 @@ func OpenRouter() Config {
 
 // SearchLogs is the noisy tool: 400 near-identical lines and one error.
 func SearchLogs() string {
+	// Request ids differ per run, as in real logs; the proxy caches identical results.
+	firstID := int(time.Now().Unix() % 1_000_000)
 	lines := make([]string, 0, 401)
 	for i := range 400 {
 		if i == 250 {
 			lines = append(lines, errorLine)
 		}
-		lines = append(lines, fmt.Sprintf(infoLine, i/60, i%60, i%7, i, i%90))
+		lines = append(lines, fmt.Sprintf(infoLine, i/60, i%60, i%7, firstID+i, i%90))
 	}
 	return strings.Join(lines, "\n")
 }
@@ -126,4 +147,68 @@ func preview(s string) string {
 
 func indent(s string) string {
 	return "  " + strings.ReplaceAll(strings.TrimSpace(s), "\n", "\n  ")
+}
+
+// proxyEvent is one run recorded by the gascoigne server, as GET /api/events lists it.
+type proxyEvent struct {
+	ID        int    `json:"id"`
+	Pipeline  string `json:"pipeline"`
+	Route     string `json:"route"`
+	Command   string `json:"command"`
+	RawTokens int    `json:"raw_tokens"`
+	OutTokens int    `json:"out_tokens"`
+	RawID     string `json:"raw_id"`
+}
+
+// proxyEvents lists the proxy events recorded after id, oldest first.
+func proxyEvents(after int) []proxyEvent {
+	addr := os.Getenv("GASCOIGNE_SERVER_ADDR")
+	url := fmt.Sprintf("http://%s/api/events?after=%d&limit=200", addr, after)
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = resp.Body.Close() }()
+	var all []proxyEvent
+	if json.NewDecoder(resp.Body).Decode(&all) != nil {
+		return nil
+	}
+	events := slices.DeleteFunc(all, func(e proxyEvent) bool { return e.Pipeline != "proxy" })
+	slices.SortFunc(events, func(a, b proxyEvent) int { return a.ID - b.ID })
+	return events
+}
+
+// ProxyMark is the id of the newest proxy event; pass it to ReportProxy after the agent ran.
+func ProxyMark() int {
+	events := proxyEvents(0)
+	if len(events) == 0 {
+		return 0
+	}
+	return events[len(events)-1].ID
+}
+
+// ReportProxy prints the answer and the tool results the proxy shortened since mark.
+func ReportProxy(mark int, answer string) {
+	fmt.Printf("Model answer:\n%s\n\n", indent(answer))
+	var results []proxyEvent
+	for range 10 {
+		results = slices.DeleteFunc(proxyEvents(mark), func(e proxyEvent) bool {
+			return e.RawTokens == 0 || e.Route != "default"
+		})
+		if len(results) > 0 {
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	if len(results) == 0 {
+		fmt.Println("The proxy saw no new tool result. Is the gascoigne CLI on PATH?")
+		return
+	}
+	fmt.Println("Tool results shortened by the proxy:")
+	for _, e := range results {
+		saved := 100 * (1 - float64(e.OutTokens)/float64(e.RawTokens))
+		fmt.Printf("  %s: %d -> %d tokens (saved %.0f%%)\n",
+			e.Command, e.RawTokens, e.OutTokens, saved)
+		fmt.Printf("  Original: gascoigne raw %s\n", e.RawID)
+	}
 }

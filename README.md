@@ -71,6 +71,38 @@ cp .env.example .env        # put your OPENROUTER_API_KEY in it (the file is git
 No key yet? `GASCOIGNE_DEMO_DRY=1` builds each agent and calls its tool without the LLM, and
 `mise run demo` does that for all of them.
 
+## Proxy mode: automatic, no tool wrapping
+
+Wrapping a tool is explicit. The alternative is to point the framework's LLM client at the gascoigne
+proxy: every tool result in every request is shortened, whatever produced it (your functions,
+built-in tools, MCP servers), and no tool code changes.
+
+```python
+# 1. Start gascoigne.
+gascoigne.init(agent="langgraph")
+
+# 2. Send LLM traffic through the gascoigne proxy.
+base_url = gascoigne.proxy_base_url("openai") or openrouter.base_url
+agent = create_agent(ChatOpenAI(model=..., api_key=..., base_url=base_url), [tool(search_logs)])
+```
+
+`proxy_base_url` returns nothing when gascoigne is unavailable, so the `or` falls back to the real
+endpoint. The proxy forwards to the upstream in the gascoigne config; the demos ship
+[`demos/gascoigne.yaml`](demos/gascoigne.yaml) pointing it at OpenRouter and start a dedicated server.
+
+| Language | Proxy demos (next to the wrapping ones) |
+|---|---|
+| Python | `<framework>/proxy.py` for langchain, langgraph, agno, google-adk, openai-agents, crewai, llamaindex, pydantic-ai, smolagents |
+| TypeScript | `typescript/demos/proxy/` : ai-sdk, langchain, openai-agents, mastra |
+| Java | `java/demos/spring-ai-proxy` |
+| Go | `go/demos/langchaingo-proxy` |
+
+`mise run demo:proxy` runs most of them for real with no API key, using a fake LLM
+([`scripts/fake_llm.py`](scripts/fake_llm.py)) in place of OpenRouter.
+
+When to use which: proxy mode needs a client whose base URL you can set and covers everything the
+model reads; wrapping works with any provider and lets you pick tools one by one.
+
 ## Settings
 
 | Env | Effect |

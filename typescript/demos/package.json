@@ -7,7 +7,11 @@
     "langchain": "tsx langchain.ts",
     "openai-agents": "tsx openai-agents.ts",
     "mastra": "tsx mastra.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "proxy:ai-sdk": "tsx proxy/ai-sdk.ts",
+    "proxy:langchain": "tsx proxy/langchain.ts",
+    "proxy:openai-agents": "tsx proxy/openai-agents.ts",
+    "proxy:mastra": "tsx proxy/mastra.ts"
   },
   "dependencies": {
     "@gascoigne/sdk": "workspace:^",
@@ -22,5 +26,7 @@
     "openai": "latest",
     "zod": "^4.0.0"
   },
-  "devDependencies": { "tsx": "^4.19.0" }
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
 }

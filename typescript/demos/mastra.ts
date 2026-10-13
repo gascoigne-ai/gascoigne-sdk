@@ -12,12 +12,11 @@ init({ agent: "mastra" });
 // 2. Wrap the tool.
 const logs = wrapTool(searchLogs, "search_logs");
 
-const { model, apiKey } = openrouter();
 const agent = new Agent({
   id: "logs",
   name: "logs",
   instructions: "Answer from the tools.",
-  model: createOpenRouter({ apiKey })(model),
+  model: createOpenRouter({ apiKey: openrouter.apiKey })(openrouter.model),
   tools: {
     search_logs: createTool({
       id: "search_logs",

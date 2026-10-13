@@ -11,6 +11,7 @@
   <modules>
     <module>kit</module>
     <module>spring-ai</module>
+    <module>spring-ai-proxy</module>
     <module>langchain4j</module>
   </modules>
 

@@ -23,7 +23,7 @@ public final class Main {
             this.gascoigne = gascoigne;
         }
 
-        @Tool("Return the recent service logs.")
+        @Tool(name = "search_logs", value = "Return the recent service logs.")
         String searchLogs() {
             // 2. Optimize what the tool returns.
             return gascoigne.optimize(Demo.noisyLogs(), Attrs.tool("search_logs"));

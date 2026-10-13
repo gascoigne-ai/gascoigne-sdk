@@ -15,5 +15,12 @@ uv run --extra langgraph python langgraph/main.py
 GASCOIGNE_DEMO_DRY=1 uv run --extra agno python agno/main.py    # no LLM call
 ```
 
+Each folder also has a `proxy.py`: the same agent through the gascoigne proxy, with the tool left
+unwrapped (one added line). Needs a real run, so it has no dry mode.
+
+```sh
+uv run --extra langgraph python langgraph/proxy.py
+```
+
 Extras (one per run, their pins conflict): `langchain langgraph agno adk openai-agents crewai
 llamaindex pydantic-ai smolagents`.

@@ -17,9 +17,12 @@ const searchTool = tool(async () => String(await logs()), {
   description: "Return the recent service logs.",
   schema: z.object({}),
 });
-const { model, apiKey, baseURL } = openrouter();
 const agent = createAgent({
-  model: new ChatOpenAI({ model, apiKey, configuration: { baseURL } }),
+  model: new ChatOpenAI({
+    model: openrouter.model,
+    apiKey: openrouter.apiKey,
+    configuration: { baseURL: openrouter.baseURL },
+  }),
   tools: [searchTool],
 });
 
