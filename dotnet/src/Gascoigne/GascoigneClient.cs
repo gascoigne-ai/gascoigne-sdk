@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Net.Http.Json;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -290,6 +291,32 @@ public sealed class GascoigneClient : IDisposable
         {
             RecordFailure();
             return "";
+        }
+    }
+
+    /// <summary>Part of an original, for a model that needs what was folded.</summary>
+    /// <param name="rawId">The id from a "gascoigne raw" hint.</param>
+    /// <param name="grep">Regex matched per line; empty for all lines.</param>
+    /// <param name="lines">Range such as "10-40"; empty for all lines.</param>
+    /// <param name="ct">Cancellation.</param>
+    public async Task<string> RetrieveAsync(
+        string rawId, string grep = "", string lines = "", CancellationToken ct = default)
+    {
+        var original = await RawAsync(rawId, ct);
+        if (original.Length == 0)
+        {
+            return $"No original stored for {rawId}.";
+        }
+
+        try
+        {
+            return Selection.Of(original, grep, lines);
+        }
+        catch (Exception e) when (e is FormatException
+            or ArgumentException
+            or RegexMatchTimeoutException)
+        {
+            return $"Bad selection: {e.Message}";
         }
     }
 

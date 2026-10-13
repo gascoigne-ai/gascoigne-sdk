@@ -5,7 +5,7 @@
 **Your agent framework reads less. Nothing gets lost.**
 
 Drop-in token optimization for tool results, in the languages and frameworks you already use.<br>
-`99% off a noisy log`, `Python | TypeScript | Go | Java | .NET | Rust`, `16 framework demos`
+`99% off a noisy log`, `Python | TypeScript | Go | Java | .NET | Rust`, `17 framework demos`
 
 </div>
 
@@ -65,6 +65,7 @@ cp .env.example .env        # put your OPENROUTER_API_KEY in it (the file is git
 | Python | langchain, langgraph, agno, google-adk, openai-agents, crewai, llamaindex, pydantic-ai, smolagents | `cd demos/python && uv run --extra langgraph python langgraph/wrap.py` |
 | TypeScript | Vercel AI SDK, LangChain.js, OpenAI Agents JS, Mastra | `cd demos/typescript && pnpm install && pnpm ai-sdk:wrap` |
 | Java | Spring AI, LangChain4j | see [`demos/README.md`](demos/README.md) |
+| .NET | Microsoft.Extensions.AI | `cd demos/dotnet && dotnet run --project microsoft-extensions-ai/wrap` |
 | Go | langchaingo | `cd demos/go && go run ./langchaingo/wrap` |
 | Rust | none (no LLM, optimizes a log) | `cd rust && cargo run --example plain` |
 
@@ -105,8 +106,14 @@ model reads; wrapping works with any provider and lets you pick tools one by one
 
 ## Auto mode: decorate tools and MCP calls, when you ask for it
 
-If you would rather not wrap each tool, one explicit call decorates the common chokepoints of the
-libraries you have installed (Python today):
+If you would rather not wrap each tool, one explicit call decorates the place every tool call goes
+through. Nothing is decorated unless your code asks: no environment switch, no import side effect.
+
+| Language | Opt in with | Covers |
+|---|---|---|
+| Python | `gascoigne.auto(skip=[...])` | MCP servers through any framework using the `mcp` client, and LangChain / LangGraph tools |
+| Java (Spring AI) | `@EnableGascoigne(skip = ...)` from `gascoigne-spring-ai` | every `@Tool`, function callback and MCP tool (wraps `ToolCallingManager`) |
+| .NET (Microsoft.Extensions.AI) | `.UseFunctionInvocation(configure: c => c.UseGascoigne(g))` from `Gascoigne.Extensions.AI` | every function the chat client invokes, MCP tools included |
 
 ```python
 # Start gascoigne, then opt in. Nothing is decorated unless this line is in your code.
@@ -114,19 +121,14 @@ gascoigne.init(agent="my-app")
 gascoigne.auto(skip=["write_file"])
 ```
 
-| What it covers | How |
-|---|---|
-| MCP servers, through any framework that uses the `mcp` client (LangChain MCP adapters, OpenAI Agents, ADK, Agno, Pydantic AI, LlamaIndex, ...) | `mcp.ClientSession.call_tool` |
-| LangChain and LangGraph tools | `BaseTool.invoke` / `ainvoke` |
+What it follows: `skip` and `only` pick tools; results under `min_chars` never leave the process;
+errors and structured data that code reads are untouched; Python's `handle.undo()` restores everything.
 
-Rules it follows: opt-in only (no environment switch, no import side effect); `skip=` and `only=` pick
-tools; results under `min_chars` never leave the process; errors and structured data that code reads
-are untouched; `handle.undo()` restores everything.
-
-Shortened results end with a `gascoigne raw <id>` hint. Give the model a way to follow it by adding
-`gascoigne.retrieve_original` to its tools (it takes `raw_id`, optional `grep` and `lines`). The demos
-`demos/python/langgraph/auto.py` (an agent with an MCP server) and `demos/java/spring-ai/auto` show
-it.
+Shortened results end with a `gascoigne raw <id>` hint. Give the model a way to follow it by adding the
+retrieve tool, and list it in `skip` so fetching an original does not shorten it again:
+`gascoigne.retrieve_original` (Python), `RetrieveOriginalTool` (Spring AI),
+`RetrieveOriginalFunction.Create(g)` (.NET). Demos: `demos/python/langgraph/auto.py`,
+`demos/java/spring-ai/auto`, `demos/dotnet/microsoft-extensions-ai/auto`.
 
 ## Settings
 

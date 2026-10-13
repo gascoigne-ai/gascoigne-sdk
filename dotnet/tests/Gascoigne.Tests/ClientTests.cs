@@ -109,4 +109,13 @@ public sealed class ClientTests : IDisposable
         var g = new GascoigneClient(new GascoigneOptions { Addr = Serve(1, 200) });
         Assert.Equal("short", await g.WrapTool<string>("t", _ => Task.FromResult("big"))("in"));
     }
+
+    [Fact]
+    public async Task RetrieveNarrowsTheOriginal()
+    {
+        var g = new GascoigneClient(new GascoigneOptions { Addr = Serve(1, 200) });
+        Assert.Equal("1: original", await g.RetrieveAsync("abc"));
+        Assert.Equal("", await g.RetrieveAsync("abc", grep: "nomatch"));
+        Assert.StartsWith("Bad selection", await g.RetrieveAsync("abc", grep: "("));
+    }
 }
