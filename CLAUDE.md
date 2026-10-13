@@ -10,3 +10,4 @@ SDKs that embed gascoigne-cli token optimization into agent frameworks. Contract
 
 @.harness/rules.md
 @.harness/code-style.md
+@.harness/commit-style.md
