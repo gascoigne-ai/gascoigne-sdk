@@ -15,8 +15,8 @@
     "mastra:proxy": "tsx mastra/proxy.ts"
   },
   "dependencies": {
-    "@gascoigne/sdk": "link:../../typescript/packages/sdk",
-    "@gascoigne/ai-sdk": "link:../../typescript/packages/ai-sdk",
+    "@gascoigne-ai/sdk": "link:../../typescript/packages/sdk",
+    "@gascoigne-ai/ai-sdk": "link:../../typescript/packages/ai-sdk",
     "@langchain/core": "^1.0.0",
     "@langchain/openai": "^1.0.0",
     "@mastra/core": "latest",

@@ -4,7 +4,7 @@
  */
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { type Result, runtime as sdk, stats } from "@gascoigne/sdk";
+import { type Result, runtime as sdk, stats } from "@gascoigne-ai/sdk";
 
 // Load the nearest .env, walking up from the working directory.
 for (let dir = resolve("."); ; dir = dirname(dir)) {

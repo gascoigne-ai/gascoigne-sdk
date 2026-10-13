@@ -8,10 +8,10 @@ importers:
 
   .:
     dependencies:
-      '@gascoigne/ai-sdk':
+      '@gascoigne-ai/ai-sdk':
         specifier: link:../../typescript/packages/ai-sdk
         version: link:../../typescript/packages/ai-sdk
-      '@gascoigne/sdk':
+      '@gascoigne-ai/sdk':
         specifier: link:../../typescript/packages/sdk
         version: link:../../typescript/packages/sdk
       '@langchain/core':

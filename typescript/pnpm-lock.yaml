@@ -23,7 +23,7 @@ importers:
 
   packages/ai-sdk:
     dependencies:
-      '@gascoigne/sdk':
+      '@gascoigne-ai/sdk':
         specifier: workspace:^
         version: link:../sdk
 

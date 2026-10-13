@@ -1,5 +1,5 @@
 /** Mastra through the gascoigne proxy: tools are not wrapped, one added line. */
-import { init, proxyBaseUrl } from "@gascoigne/sdk";
+import { init, proxyBaseUrl } from "@gascoigne-ai/sdk";
 import { Agent } from "@mastra/core/agent";
 import { createTool } from "@mastra/core/tools";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";

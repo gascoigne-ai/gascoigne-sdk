@@ -1,4 +1,4 @@
-import { Runtime } from "@gascoigne/sdk";
+import { Runtime } from "@gascoigne-ai/sdk";
 import { describe, expect, it } from "vitest";
 import { wrapTools } from "../src/index.js";
 

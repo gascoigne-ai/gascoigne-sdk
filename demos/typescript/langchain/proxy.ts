@@ -1,5 +1,5 @@
 /** LangChain.js through the gascoigne proxy: tools are not wrapped, one added line. */
-import { init, proxyBaseUrl } from "@gascoigne/sdk";
+import { init, proxyBaseUrl } from "@gascoigne-ai/sdk";
 import { tool } from "@langchain/core/tools";
 import { ChatOpenAI } from "@langchain/openai";
 import { createAgent } from "langchain";

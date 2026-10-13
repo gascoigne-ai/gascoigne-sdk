@@ -1,5 +1,5 @@
 /** OpenAI Agents SDK for JS through the gascoigne proxy: tools are not wrapped. */
-import { init, proxyBaseUrl } from "@gascoigne/sdk";
+import { init, proxyBaseUrl } from "@gascoigne-ai/sdk";
 import {
   Agent,
   run,

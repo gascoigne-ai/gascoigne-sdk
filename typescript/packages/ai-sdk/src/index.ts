@@ -1,5 +1,5 @@
 /** Vercel AI SDK helper: optimize what `tool({ execute })` results hand to the model. */
-import { type Runtime, runtime } from "@gascoigne/sdk";
+import { type Runtime, runtime } from "@gascoigne-ai/sdk";
 
 interface ToolLike {
   execute?: (...args: any[]) => unknown;

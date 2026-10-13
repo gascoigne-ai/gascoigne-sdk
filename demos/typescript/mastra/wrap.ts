@@ -1,5 +1,5 @@
 /** Mastra agent with the OpenRouter provider. Two added lines. */
-import { init, wrapTool } from "@gascoigne/sdk";
+import { init, wrapTool } from "@gascoigne-ai/sdk";
 import { Agent } from "@mastra/core/agent";
 import { createTool } from "@mastra/core/tools";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";

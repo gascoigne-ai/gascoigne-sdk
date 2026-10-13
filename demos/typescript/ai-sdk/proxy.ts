@@ -1,5 +1,5 @@
 /** Vercel AI SDK through the gascoigne proxy: tools are not wrapped, one added line. */
-import { init, proxyBaseUrl } from "@gascoigne/sdk";
+import { init, proxyBaseUrl } from "@gascoigne-ai/sdk";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";

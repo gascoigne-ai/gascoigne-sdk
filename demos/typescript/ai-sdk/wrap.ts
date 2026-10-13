@@ -1,6 +1,6 @@
 /** Vercel AI SDK + OpenRouter. Two added lines. */
-import { wrapTools } from "@gascoigne/ai-sdk";
-import { init } from "@gascoigne/sdk";
+import { wrapTools } from "@gascoigne-ai/ai-sdk";
+import { init } from "@gascoigne-ai/sdk";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";

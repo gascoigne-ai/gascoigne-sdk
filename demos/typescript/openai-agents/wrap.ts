@@ -1,5 +1,5 @@
 /** OpenAI Agents SDK for JS, chat completions via OpenRouter. Two added lines. */
-import { init, wrapTool } from "@gascoigne/sdk";
+import { init, wrapTool } from "@gascoigne-ai/sdk";
 import {
   Agent,
   run as runAgent,

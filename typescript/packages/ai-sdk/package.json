@@ -1,17 +1,30 @@
 {
-  "name": "@gascoigne/ai-sdk",
-  "version": "0.1.0",
+  "name": "@gascoigne-ai/ai-sdk",
+  "version": "0.1.1",
   "description": "gascoigne token optimization for Vercel AI SDK tools (also fits Mastra)",
   "license": "Apache-2.0",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
-  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "repository": "github:gascoigne-ai/gascoigne-sdk",
-  "publishConfig": { "access": "public", "provenance": true },
-  "dependencies": { "@gascoigne/sdk": "workspace:^" },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@gascoigne-ai/sdk": "workspace:^"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",

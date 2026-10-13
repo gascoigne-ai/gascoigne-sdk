@@ -1,5 +1,5 @@
 /** LangChain.js `createAgent` (a LangGraph.js graph). Two added lines. */
-import { init, wrapTool } from "@gascoigne/sdk";
+import { init, wrapTool } from "@gascoigne-ai/sdk";
 import { tool } from "@langchain/core/tools";
 import { ChatOpenAI } from "@langchain/openai";
 import { createAgent } from "langchain";
