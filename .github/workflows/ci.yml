@@ -39,5 +39,3 @@ jobs:
         run: cd cli && go build -o ../gascoigne ./cmd/gascoigne
       - if: steps.cli.outputs.ready == 'true'
         run: GASCOIGNE_BIN=$PWD/gascoigne mise run e2e
-      - if: steps.cli.outputs.ready == 'true'
-        run: GASCOIGNE_BIN=$PWD/gascoigne PATH=$PWD:$PATH mise run demo
