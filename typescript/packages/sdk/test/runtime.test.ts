@@ -23,8 +23,9 @@ async function serve(opts: { proto?: number; optimizeStatus?: number } = {}) {
       res.end("original");
     });
   });
-  await new Promise<void>((r) => srv!.listen(0, "127.0.0.1", r));
-  process.env.GASCOIGNE_SERVER_ADDR = `127.0.0.1:${(srv.address() as AddressInfo).port}`;
+  const s = srv;
+  await new Promise<void>((r) => s.listen(0, "127.0.0.1", r));
+  process.env.GASCOIGNE_SERVER_ADDR = `127.0.0.1:${(s.address() as AddressInfo).port}`;
 }
 
 beforeEach(() => {

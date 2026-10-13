@@ -1,23 +1,25 @@
-"""LangChain: bind a tool, run the tool loop by hand."""
+"""LangChain: bind a tool and run the tool loop yourself. Two added lines."""
 
-import common
-from gascoigne.ext.langchain import optimize_tools
+import gascoigne
 from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 
-common.rt("langchain")
-search_logs = tool(common.search_logs)
-(search_logs,) = optimize_tools([search_logs])
-llm = ChatOpenAI(model=common.MODEL, base_url=common.BASE_URL, api_key=common.api_key())
-llm = llm.bind_tools([search_logs])
+from demo_kit import PROMPT, openrouter, run, search_logs
 
-if common.dry():
-    common.dry_call(lambda: search_logs.invoke({}))
-else:
-    msgs = [HumanMessage(common.PROMPT)]
+gascoigne.init(agent="langchain")  # 1. start gascoigne
+search_logs = gascoigne.wrap_tool(search_logs)  # 2. wrap the tool
+
+logs = tool(search_logs)
+cfg = openrouter()
+llm = ChatOpenAI(model=cfg.model, api_key=cfg.api_key, base_url=cfg.base_url).bind_tools([logs])
+
+
+def ask() -> str:
+    msgs = [HumanMessage(PROMPT)]
     ai = llm.invoke(msgs)
-    msgs.append(ai)
-    for call in ai.tool_calls:
-        msgs.append(ToolMessage(search_logs.invoke(call["args"]), tool_call_id=call["id"]))
-    common.report(str(llm.invoke(msgs).content))
+    msgs += [ai] + [ToolMessage(logs.invoke(c["args"]), tool_call_id=c["id"]) for c in ai.tool_calls]
+    return llm.invoke(msgs).content
+
+
+run(ask, search_logs)

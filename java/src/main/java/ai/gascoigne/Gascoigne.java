@@ -1,5 +1,8 @@
 package ai.gascoigne;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -8,11 +11,8 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -29,80 +29,115 @@ public final class Gascoigne {
     private static final String INSTALL_HINT = "mise use -g go:github.com/gascoigne-ai/gascoigne-cli/cmd/gascoigne";
     private static final int BREAKER_FAILURES = 5;
     private static final Duration BREAKER_PAUSE = Duration.ofSeconds(60);
+    private static final ObjectMapper JSON = new ObjectMapper();
 
-    /** One optimize call: {@code text} is what the model should read. */
-    public record Result(String text, String rawId, long rawTokens, long outTokens, String skipped) {
-        static Result same(String text) { return new Result(text, "", 0, 0, ""); }
-    }
-
-    /** Where the text came from; null or empty fields are left out. */
-    public record Attrs(String tool, String cmd, String url, String query, String model) {
-        public static Attrs tool(String name) { return new Attrs(name, null, null, null, null); }
-        public static final Attrs NONE = new Attrs(null, null, null, null, null);
-    }
-
+    /** Settings; the defaults work. */
     public static final class Builder {
         private String agent = "";
         private String session = "";
         private Duration timeout = Duration.ofSeconds(5);
         private String addr;
-        private String path;
-        private BiConsumer<String, Result> onResult;
-        private Consumer<String> warn = m -> System.err.println("[gascoigne] " + m);
+        private String searchPath;
+        private BiConsumer<String, Result> onResult = (original, result) -> {};
+        private Consumer<String> warn = message -> System.err.println("[gascoigne] " + message);
 
-        public Builder agent(String v) { agent = v; return this; }
-        public Builder session(String v) { session = v; return this; }
-        public Builder timeout(Duration v) { timeout = v; return this; }
-        /** Sees (original, result) after each optimized call; exceptions in it are ignored. */
-        public Builder onResult(BiConsumer<String, Result> v) { onResult = v; return this; }
+        /** Agent or framework name, for per-agent stats. */
+        public Builder agent(String agent) {
+            this.agent = agent;
+            return this;
+        }
+
+        /** Session id, for per-session stats. */
+        public Builder session(String session) {
+            this.session = session;
+            return this;
+        }
+
+        /** Per-call timeout, default 5 s. */
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
         /** Server address, default {@code $GASCOIGNE_SERVER_ADDR} or 127.0.0.1:7878. */
-        public Builder addr(String v) { addr = v; return this; }
+        public Builder addr(String addr) {
+            this.addr = addr;
+            return this;
+        }
+
         /** Where to look for the CLI instead of {@code $GASCOIGNE_BIN} and {@code $PATH}. */
-        public Builder searchPath(String v) { path = v; return this; }
-        public Builder warn(Consumer<String> v) { warn = v; return this; }
-        public Gascoigne build() { return new Gascoigne(this); }
+        public Builder searchPath(String searchPath) {
+            this.searchPath = searchPath;
+            return this;
+        }
+
+        /** Sees (original, result) after each optimized call; exceptions in it are ignored. */
+        public Builder onResult(BiConsumer<String, Result> onResult) {
+            this.onResult = onResult;
+            return this;
+        }
+
+        /** Where the one-time warnings go. */
+        public Builder warn(Consumer<String> warn) {
+            this.warn = warn;
+            return this;
+        }
+
+        public Gascoigne build() {
+            return new Gascoigne(this);
+        }
     }
 
-    public static Builder builder() { return new Builder(); }
+    public static Builder builder() {
+        return new Builder();
+    }
 
-    private final Builder o;
-    private final HttpClient http;
+    private final Builder settings;
+    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofMillis(500)).build();
     private final Object lock = new Object();
-    private Boolean ready;
+    private Boolean available;
     private int failures;
     private long pausedUntilNanos;
     private boolean warned;
-    private final AtomicLong rawTokens = new AtomicLong();
-    private final AtomicLong outTokens = new AtomicLong();
+    private Stats stats = new Stats(0, 0);
 
-    private Gascoigne(Builder b) {
-        this.o = b;
-        this.http = HttpClient.newBuilder().connectTimeout(Duration.ofMillis(500)).build();
+    private Gascoigne(Builder settings) {
+        this.settings = settings;
     }
 
     private String baseUrl() {
-        String a = o.addr != null ? o.addr : System.getenv("GASCOIGNE_SERVER_ADDR");
-        return "http://" + (a == null || a.isEmpty() ? DEFAULT_ADDR : a);
+        String addr = settings.addr != null ? settings.addr : System.getenv("GASCOIGNE_SERVER_ADDR");
+        return "http://" + (addr == null || addr.isEmpty() ? DEFAULT_ADDR : addr);
     }
 
-    private static boolean env(String name, String value) { return value.equals(System.getenv(name)); }
+    private static boolean envIs(String name, String value) {
+        return value.equals(System.getenv(name));
+    }
 
-    private void warn(String msg) {
-        if (!warned) { warned = true; o.warn.accept(msg); }
+    private void warn(String message) {
+        synchronized (lock) {
+            if (warned) {
+                return;
+            }
+            warned = true;
+        }
+        settings.warn.accept(message);
     }
 
     private boolean healthy() {
         try {
-            var req = HttpRequest.newBuilder(URI.create(baseUrl() + "/sdk/v1/health")).timeout(Duration.ofMillis(500)).build();
-            var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-            if (resp.statusCode() != 200) return false;
-            var m = Json.decode(resp.body());
-            if (m == null) return false;
-            if (!String.valueOf(PROTO).equals(m.get("proto"))) {
-                warn("server speaks proto " + m.get("proto") + ", SDK " + PROTO + "; running without optimization");
+            HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl() + "/sdk/v1/health"))
+                    .timeout(Duration.ofMillis(500))
+                    .build();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
                 return false;
             }
-            return true;
+            Health health = JSON.readValue(response.body(), Health.class);
+            if (health.proto() != PROTO) {
+                warn("server speaks proto " + health.proto() + ", SDK " + PROTO + "; running without optimization");
+            }
+            return health.proto() == PROTO;
         } catch (IOException e) {
             return false;
         } catch (InterruptedException e) {
@@ -113,27 +148,36 @@ public final class Gascoigne {
 
     private Optional<Path> findCli() {
         String bin = System.getenv("GASCOIGNE_BIN");
-        if (o.path == null && bin != null && !bin.isEmpty()) return Optional.of(Path.of(bin));
-        String path = o.path != null ? o.path : System.getenv("PATH");
-        if (path == null) return Optional.empty();
-        for (String dir : path.split(java.io.File.pathSeparator)) {
-            if (dir.isEmpty()) continue;
-            Path p = Path.of(dir, "gascoigne");
-            if (Files.isExecutable(p) && !Files.isDirectory(p)) return Optional.of(p);
+        if (settings.searchPath == null && bin != null && !bin.isEmpty()) {
+            return Optional.of(Path.of(bin));
+        }
+        String path = settings.searchPath != null ? settings.searchPath : System.getenv("PATH");
+        if (path == null) {
+            return Optional.empty();
+        }
+        for (String dir : path.split(File.pathSeparator)) {
+            Path candidate = Path.of(dir, "gascoigne");
+            if (!dir.isEmpty() && Files.isExecutable(candidate) && !Files.isDirectory(candidate)) {
+                return Optional.of(candidate);
+            }
         }
         return Optional.empty();
     }
 
     private boolean startServer() {
-        var exe = findCli();
-        if (exe.isEmpty()) {
+        Optional<Path> cli = findCli();
+        if (cli.isEmpty()) {
             warn("gascoigne-cli not found on PATH; running without optimization. Install: " + INSTALL_HINT);
             return false;
         }
         try {
-            var p = new ProcessBuilder(exe.get().toString(), "server", "start")
-                .redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start();
-            if (!p.waitFor(10, TimeUnit.SECONDS)) p.destroyForcibly();
+            Process process = new ProcessBuilder(cli.get().toString(), "server", "start")
+                    .redirectErrorStream(true)
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .start();
+            if (!process.waitFor(10, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+            }
         } catch (IOException e) {
             warn("could not start gascoigne server (" + e.getMessage() + "); running without optimization");
             return false;
@@ -141,10 +185,21 @@ public final class Gascoigne {
             Thread.currentThread().interrupt();
             return false;
         }
-        long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
-        while (System.nanoTime() < end) {
-            if (healthy()) return true;
-            try { Thread.sleep(100); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return false; }
+        return awaitHealthy();
+    }
+
+    private boolean awaitHealthy() {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+        while (System.nanoTime() < deadline) {
+            if (healthy()) {
+                return true;
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
         }
         warn("gascoigne server did not come up; running without optimization");
         return false;
@@ -152,14 +207,18 @@ public final class Gascoigne {
 
     /** True when optimize calls will be tried. Probes once, then remembers. */
     public boolean ready() {
-        if (env("GASCOIGNE_SDK", "off") || env("GASCOIGNE_SERVER", "off")) return false;
+        if (envIs("GASCOIGNE_SDK", "off") || envIs("GASCOIGNE_SERVER", "off")) {
+            return false;
+        }
         synchronized (lock) {
-            if (ready == null) ready = healthy() || startServer();
-            return ready && System.nanoTime() >= pausedUntilNanos;
+            if (available == null) {
+                available = healthy() || startServer();
+            }
+            return available && System.nanoTime() >= pausedUntilNanos;
         }
     }
 
-    private void failed() {
+    private void recordFailure() {
         synchronized (lock) {
             if (++failures >= BREAKER_FAILURES) {
                 failures = 0;
@@ -168,64 +227,73 @@ public final class Gascoigne {
         }
     }
 
-    /** Optimizes {@code text}; on any problem the result carries the input unchanged. */
-    public Result optimizeResult(String text, Attrs attrs) {
-        if (text == null || text.isEmpty() || !ready()) return Result.same(text);
-        var body = new LinkedHashMap<String, String>();
-        body.put("text", text);
-        put(body, "agent", o.agent);
-        put(body, "session", o.session);
-        if (attrs != null) {
-            put(body, "tool", attrs.tool());
-            put(body, "cmd", attrs.cmd());
-            put(body, "url", attrs.url());
-            put(body, "query", attrs.query());
-            put(body, "model", attrs.model());
-        }
+    private Optional<Result> post(OptimizeRequest body) {
         try {
-            var req = HttpRequest.newBuilder(URI.create(baseUrl() + "/sdk/v1/optimize")).timeout(o.timeout)
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(Json.encode(body))).build();
-            var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-            var m = resp.statusCode() == 200 ? Json.decode(resp.body()) : null;
-            if (m == null || !m.containsKey("text")) { failed(); return Result.same(text); }
-            var res = new Result(m.get("text"), m.getOrDefault("raw_id", ""), num(m.get("raw_tokens")),
-                num(m.get("out_tokens")), m.getOrDefault("skipped", ""));
-            synchronized (lock) { failures = 0; }
-            rawTokens.addAndGet(res.rawTokens());
-            outTokens.addAndGet(res.outTokens() > 0 ? res.outTokens() : res.rawTokens());
-            if (o.onResult != null) {
-                try { o.onResult.accept(text, res); } catch (RuntimeException ignored) { /* observer must not break the app */ }
+            HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl() + "/sdk/v1/optimize"))
+                    .timeout(settings.timeout)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(body)))
+                    .build();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                return Optional.empty();
             }
-            return res;
-        } catch (IOException | RuntimeException e) {
-            failed();
-            return Result.same(text);
+            return Optional.of(JSON.readValue(response.body(), Result.class)).filter(r -> r.text() != null);
+        } catch (JsonProcessingException e) {
+            return Optional.empty();
+        } catch (IOException e) {
+            return Optional.empty();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return Result.same(text);
+            return Optional.empty();
         }
     }
 
-    private static void put(Map<String, String> m, String k, String v) {
-        if (v != null && !v.isEmpty()) m.put(k, v);
+    /** Optimizes {@code text}; on any problem the result carries the input unchanged. */
+    public Result optimizeResult(String text, Attrs attrs) {
+        if (text == null || text.isEmpty() || !ready()) {
+            return Result.unchanged(text);
+        }
+        Optional<Result> result = post(OptimizeRequest.of(text, settings.agent, settings.session, attrs));
+        if (result.isEmpty()) {
+            recordFailure();
+            return Result.unchanged(text);
+        }
+        synchronized (lock) {
+            failures = 0;
+            Result r = result.get();
+            stats = new Stats(stats.rawTokens() + r.rawTokens(), stats.outTokens() + (r.outTokens() > 0 ? r.outTokens() : r.rawTokens()));
+        }
+        notifyObserver(text, result.get());
+        return result.get();
     }
 
-    private static long num(String s) {
-        try { return s == null ? 0 : Long.parseLong(s); } catch (NumberFormatException e) { return 0; }
+    private void notifyObserver(String original, Result result) {
+        try {
+            settings.onResult.accept(original, result);
+        } catch (RuntimeException ignored) {
+            // an observer must never break the host app
+        }
     }
 
-    public String optimize(String text, Attrs attrs) { return optimizeResult(text, attrs).text(); }
+    /** The text the model should read. */
+    public String optimize(String text, Attrs attrs) {
+        return optimizeResult(text, attrs).text();
+    }
 
     /** The original behind an optimized result; empty when unavailable. */
     public String raw(String rawId) {
-        if (!ready()) return "";
+        if (!ready()) {
+            return "";
+        }
         try {
-            var req = HttpRequest.newBuilder(URI.create(baseUrl() + "/sdk/v1/raw/" + rawId)).timeout(o.timeout).build();
-            var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-            return resp.statusCode() == 200 ? resp.body() : "";
-        } catch (IOException | RuntimeException e) {
-            failed();
+            HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl() + "/sdk/v1/raw/" + rawId))
+                    .timeout(settings.timeout)
+                    .build();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() == 200 ? response.body() : "";
+        } catch (IOException e) {
+            recordFailure();
             return "";
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -233,17 +301,24 @@ public final class Gascoigne {
         }
     }
 
-    /** Base URL that routes an LLM client through the gascoigne proxy, empty in bypass. */
+    /** Base URL that routes an LLM client through the gascoigne proxy; empty in bypass. */
     public Optional<String> proxyBaseUrl(String api) {
-        if (!ready()) return Optional.empty();
+        if (!ready()) {
+            return Optional.empty();
+        }
         return Optional.of("openai".equals(api) ? baseUrl() + "/v1" : baseUrl());
     }
 
     /** Tokens (estimated) before and after, summed over this instance's calls. */
-    public long[] stats() { return new long[] {rawTokens.get(), outTokens.get()}; }
+    public Stats stats() {
+        synchronized (lock) {
+            return stats;
+        }
+    }
 
     /** Wraps a string-returning tool function, e.g. a LangChain4j or Spring AI tool body. */
-    public <A> Function<A, String> wrapTool(String name, Function<A, String> fn) {
-        return a -> optimize(fn.apply(a), Attrs.tool(name));
+    public <A> Function<A, String> wrapTool(String name, Function<A, String> tool) {
+        Attrs attrs = Attrs.tool(name);
+        return arg -> optimize(tool.apply(arg), attrs);
     }
 }

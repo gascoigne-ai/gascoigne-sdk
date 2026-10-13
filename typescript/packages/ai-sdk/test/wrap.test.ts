@@ -7,11 +7,15 @@ describe("wrapTools", () => {
     process.env.GASCOIGNE_SDK = "off"; // bypass: wrapper must be transparent
     const rt = new Runtime();
     const tools = wrapTools(
-      { a: { description: "d", execute: async () => "big" }, b: { execute: () => 3 }, c: { description: "no exec" } },
+      {
+        a: { description: "d", execute: async () => "big" },
+        b: { execute: () => 3 },
+        c: { description: "no exec" },
+      },
       rt,
     );
-    expect(await tools.a.execute!()).toBe("big");
-    expect(await tools.b.execute!()).toBe(3);
+    expect(await tools.a.execute?.()).toBe("big");
+    expect(await tools.b.execute?.()).toBe(3);
     expect((tools.c as { description: string }).description).toBe("no exec");
     expect((tools.a as { description: string }).description).toBe("d");
   });

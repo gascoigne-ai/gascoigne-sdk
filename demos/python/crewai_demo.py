@@ -1,24 +1,21 @@
-"""CrewAI: LiteLLM-style model id for OpenRouter."""
+"""CrewAI. Two added lines."""
 
-import common
 import gascoigne
 from crewai import LLM, Agent, Crew, Task
 from crewai.tools import tool
 
-common.rt("crewai")
-wrapped = gascoigne.wrap_tool(common.search_logs)
-search_logs = tool("search_logs")(wrapped)
-llm = LLM(model=f"openrouter/{common.MODEL}", api_key=common.api_key())
+from demo_kit import PROMPT, openrouter, run, search_logs
+
+gascoigne.init(agent="crewai")  # 1. start gascoigne
+search_logs = gascoigne.wrap_tool(search_logs)  # 2. wrap the tool
+
+cfg = openrouter()
 agent = Agent(
     role="SRE",
     goal="Find what went wrong from logs",
     backstory="You read logs.",
-    tools=[search_logs],
-    llm=llm,
+    tools=[tool("search_logs")(search_logs)],
+    llm=LLM(model=f"openrouter/{cfg.model}", api_key=cfg.api_key),
 )
-task = Task(description=common.PROMPT, expected_output="One sentence.", agent=agent)
-
-if common.dry():
-    common.dry_call(wrapped)
-else:
-    common.report(str(Crew(agents=[agent], tasks=[task]).kickoff()))
+task = Task(description=PROMPT, expected_output="One sentence.", agent=agent)
+run(lambda: Crew(agents=[agent], tasks=[task]).kickoff(), search_logs)

@@ -4,8 +4,8 @@ Every call is safe: when the gascoigne CLI is missing or the server misbehaves, 
 unchanged and nothing is raised.
 """
 
+from gascoigne.models import OptimizeRequest, Result, Stats
 from gascoigne.runtime import (
-    Result,
     Runtime,
     default,
     init,
@@ -17,7 +17,9 @@ from gascoigne.runtime import (
 )
 
 __all__ = [
+    "OptimizeRequest",
     "Result",
+    "Stats",
     "Runtime",
     "default",
     "init",

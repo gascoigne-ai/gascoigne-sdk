@@ -11,10 +11,11 @@ import subprocess
 import threading
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import Any, TypeVar
 
 import httpx
+
+from gascoigne.models import OptimizeRequest, Result, Stats
 
 log = logging.getLogger("gascoigne")
 
@@ -25,17 +26,6 @@ BREAKER_FAILURES = 5
 BREAKER_PAUSE = 60.0
 
 F = TypeVar("F", bound=Callable[..., Any])
-
-
-@dataclass(frozen=True)
-class Result:
-    """One optimize call: ``text`` is what the model should read."""
-
-    text: str
-    raw_id: str = ""
-    raw_tokens: int = 0
-    out_tokens: int = 0
-    skipped: str = ""
 
 
 class Runtime:
@@ -54,13 +44,12 @@ class Runtime:
         self.timeout = timeout
         self.on_result = on_result  # called with (original, result) after each optimized call
         self._lock = threading.Lock()
-        self._state: str | None = None  # None: not probed yet, "ready" or "bypass"
+        self._available: bool | None = None  # None until probed
         self._failures = 0
         self._paused_until = 0.0
         self._warned = False
         self._client: httpx.Client | None = None
-        self._raw_tokens = 0
-        self._out_tokens = 0
+        self._stats = Stats()
 
     @property
     def addr(self) -> str:
@@ -126,12 +115,9 @@ class Runtime:
         if self._disabled():
             return False
         with self._lock:
-            if self._state is None:
-                ok = self._healthy() or self._start_server()
-                self._state = "ready" if ok else "bypass"
-            if self._state != "ready":
-                return False
-            return time.monotonic() >= self._paused_until
+            if self._available is None:
+                self._available = self._healthy() or self._start_server()
+            return self._available and time.monotonic() >= self._paused_until
 
     def _failed(self, why: object) -> None:
         log.debug("gascoigne optimize failed: %s", why)
@@ -142,42 +128,52 @@ class Runtime:
                 self._paused_until = time.monotonic() + BREAKER_PAUSE
                 log.debug("gascoigne breaker open for %ss", BREAKER_PAUSE)
 
-    def optimize_result(self, text: str, **attrs: str) -> Result:
-        """Optimize ``text``; ``attrs`` are request fields (tool, cmd, url, query, model)."""
+    def optimize_result(
+        self,
+        text: str,
+        *,
+        tool: str = "",
+        cmd: str = "",
+        url: str = "",
+        query: str = "",
+        model: str = "",
+    ) -> Result:
+        """Optimize ``text``. ``tool``..``model`` say where it came from and guide the optimizer."""
         if not text or not self.ready():
             return Result(text)
-        body = {"text": text, "agent": self.agent, "session": self.session}
-        body.update({k: v for k, v in attrs.items() if v})
+        request = OptimizeRequest(
+            text, self.agent, self.session, tool=tool, cmd=cmd, url=url, query=query, model=model
+        )
         try:
-            r = self._http().post("/sdk/v1/optimize", json={k: v for k, v in body.items() if v})
-            r.raise_for_status()
-            d = r.json()
-            out = Result(
-                text=d["text"],
-                raw_id=d.get("raw_id", ""),
-                raw_tokens=d.get("raw_tokens", 0),
-                out_tokens=d.get("out_tokens", 0),
-                skipped=d.get("skipped", ""),
-            )
-        except (httpx.HTTPError, ValueError, KeyError) as e:
+            response = self._http().post("/sdk/v1/optimize", json=request.to_json())
+            response.raise_for_status()
+            out = Result.from_json(response.json())
+        except (httpx.HTTPError, ValueError, KeyError, TypeError) as e:
             self._failed(e)
             return Result(text)
         with self._lock:
             self._failures = 0
-            self._raw_tokens += out.raw_tokens
-            self._out_tokens += out.out_tokens or out.raw_tokens
-        if self.on_result:
-            try:
-                self.on_result(text, out)
-            except Exception as e:  # an observer must never break the host app
-                log.debug("on_result failed: %s", e)
+            self._stats = Stats(
+                self._stats.raw_tokens + out.raw_tokens,
+                self._stats.out_tokens + (out.out_tokens or out.raw_tokens),
+            )
+        self._notify(text, out)
         return out
 
-    def stats(self) -> dict[str, int]:
+    def _notify(self, original: str, result: Result) -> None:
+        if not self.on_result:
+            return
+        try:
+            self.on_result(original, result)
+        except Exception as e:  # an observer must never break the host app
+            log.debug("on_result failed: %s", e)
+
+    def stats(self) -> Stats:
         """Tokens (estimated) before and after, summed over this runtime's calls."""
-        return {"raw_tokens": self._raw_tokens, "out_tokens": self._out_tokens}
+        return self._stats
 
     def optimize(self, text: str, **attrs: str) -> str:
+        """The text the model should read; ``attrs`` as in `optimize_result`."""
         return self.optimize_result(text, **attrs).text
 
     def raw(self, raw_id: str) -> str:
@@ -257,5 +253,5 @@ def wrap_tool(fn: F, *, name: str = "") -> F:
     return _default.wrap_tool(fn, name=name)
 
 
-def stats() -> dict[str, int]:
+def stats() -> Stats:
     return _default.stats()

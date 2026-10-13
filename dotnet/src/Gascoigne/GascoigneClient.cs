@@ -13,20 +13,52 @@ public sealed record Result(
     [property: JsonPropertyName("out_tokens")] long OutTokens = 0,
     [property: JsonPropertyName("skipped")] string Skipped = "");
 
+/// <summary>Tokens (estimated) before and after, summed over a client's calls.</summary>
+public readonly record struct Stats(long RawTokens, long OutTokens)
+{
+    /// <summary>Fraction of tokens saved, 0 when nothing was optimized.</summary>
+    public double Saved => RawTokens == 0 ? 0 : 1 - (double)OutTokens / RawTokens;
+}
+
+/// <summary>Body of <c>POST /sdk/v1/optimize</c>; unset fields are not sent.</summary>
+internal sealed record OptimizeRequest(
+    string Text, string? Agent, string? Session, string? Tool, string? Cmd, string? Url, string? Query, string? Model)
+{
+    private static string? OrNull(string? value) => string.IsNullOrEmpty(value) ? null : value;
+
+    public static OptimizeRequest From(string text, GascoigneOptions options, Attrs? attrs) => new(
+        text, OrNull(options.Agent), OrNull(options.Session),
+        OrNull(attrs?.Tool), OrNull(attrs?.Cmd), OrNull(attrs?.Url), OrNull(attrs?.Query), OrNull(attrs?.Model));
+}
+
+/// <summary>Response of <c>GET /sdk/v1/health</c>.</summary>
+internal sealed record Health(
+    [property: JsonPropertyName("version")] string? Version,
+    [property: JsonPropertyName("proto")] int Proto);
+
 /// <summary>Where the text came from; null fields are left out.</summary>
 public sealed record Attrs
 {
+    /// <summary>Tool name.</summary>
     public string? Tool { get; init; }
+    /// <summary>Shell command that produced the text.</summary>
     public string? Cmd { get; init; }
+    /// <summary>URL the text was fetched from.</summary>
     public string? Url { get; init; }
+    /// <summary>What the agent is looking for; guides lossy selection.</summary>
     public string? Query { get; init; }
+    /// <summary>LLM model that will read the text.</summary>
     public string? Model { get; init; }
 }
 
+/// <summary>Settings for <see cref="GascoigneClient"/>; the defaults work.</summary>
 public sealed class GascoigneOptions
 {
+    /// <summary>Agent or framework name, for per-agent stats.</summary>
     public string Agent { get; init; } = "";
+    /// <summary>Session id, for per-session stats.</summary>
     public string Session { get; init; } = "";
+    /// <summary>Per-call timeout.</summary>
     public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(5);
     /// <summary>Server address; default <c>$GASCOIGNE_SERVER_ADDR</c> or 127.0.0.1:7878.</summary>
     public string? Addr { get; init; }
@@ -34,6 +66,7 @@ public sealed class GascoigneOptions
     public string? SearchPath { get; init; }
     /// <summary>Sees (original, result) after each optimized call; exceptions in it are ignored.</summary>
     public Action<string, Result>? OnResult { get; init; }
+    /// <summary>Where the one-time warnings go.</summary>
     public Action<string> Warn { get; init; } = m => Console.Error.WriteLine("[gascoigne] " + m);
 }
 
@@ -41,13 +74,19 @@ public sealed class GascoigneOptions
 /// Finds the CLI, makes sure its server runs, and optimizes text through it. Every call is safe:
 /// when the CLI is missing or the server misbehaves, inputs come back unchanged.
 /// </summary>
-public sealed class GascoigneClient
+public sealed class GascoigneClient : IDisposable
 {
     private const int Proto = 1;
     private const string DefaultAddr = "127.0.0.1:7878";
     private const string InstallHint = "mise use -g go:github.com/gascoigne-ai/gascoigne-cli/cmd/gascoigne";
     private const int BreakerFailures = 5;
     private static readonly TimeSpan BreakerPause = TimeSpan.FromSeconds(60);
+
+    private static readonly JsonSerializerOptions RequestJson = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
 
     private readonly GascoigneOptions _o;
     private readonly HttpClient _http;
@@ -57,8 +96,16 @@ public sealed class GascoigneClient
     private int _failures;
     private DateTime _pausedUntil = DateTime.MinValue;
     private bool _warned;
-    private long _rawTokens, _outTokens;
+    private Stats _stats;
 
+    /// <summary>Releases the HTTP client.</summary>
+    public void Dispose()
+    {
+        _http.Dispose();
+        _probe.Dispose();
+    }
+
+    /// <summary>Creates a client; nothing is probed until the first call.</summary>
     public GascoigneClient(GascoigneOptions? options = null)
     {
         _o = options ?? new GascoigneOptions();
@@ -94,10 +141,9 @@ public sealed class GascoigneClient
             cts.CancelAfter(TimeSpan.FromMilliseconds(500));
             using var resp = await _http.GetAsync($"{BaseUrl}/sdk/v1/health", cts.Token);
             if (!resp.IsSuccessStatusCode) return false;
-            using var doc = await JsonDocument.ParseAsync(await resp.Content.ReadAsStreamAsync(cts.Token), cancellationToken: cts.Token);
-            var proto = doc.RootElement.TryGetProperty("proto", out var p) ? p.GetInt32() : -1;
-            if (proto == Proto) return true;
-            Warn($"server speaks proto {proto}, SDK {Proto}; running without optimization");
+            var health = await resp.Content.ReadFromJsonAsync<Health>(cts.Token);
+            if (health?.Proto == Proto) return true;
+            Warn($"server speaks proto {health?.Proto}, SDK {Proto}; running without optimization");
             return false;
         }
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException)
@@ -171,22 +217,17 @@ public sealed class GascoigneClient
     {
         var same = new Result(text);
         if (string.IsNullOrEmpty(text) || !await ReadyAsync(ct)) return same;
-        var body = new Dictionary<string, string> { ["text"] = text };
-        void Put(string k, string? v) { if (!string.IsNullOrEmpty(v)) body[k] = v; }
-        Put("agent", _o.Agent); Put("session", _o.Session);
-        Put("tool", attrs?.Tool); Put("cmd", attrs?.Cmd); Put("url", attrs?.Url);
-        Put("query", attrs?.Query); Put("model", attrs?.Model);
+        var request = OptimizeRequest.From(text, _o, attrs);
         try
         {
-            using var resp = await _http.PostAsJsonAsync($"{BaseUrl}/sdk/v1/optimize", body, ct);
+            using var resp = await _http.PostAsJsonAsync($"{BaseUrl}/sdk/v1/optimize", request, RequestJson, ct);
             resp.EnsureSuccessStatusCode();
             var res = await resp.Content.ReadFromJsonAsync<Result>(ct);
             if (res is null || res.Text is null) { Failed(); return same; }
             lock (_lock)
             {
                 _failures = 0;
-                _rawTokens += res.RawTokens;
-                _outTokens += res.OutTokens > 0 ? res.OutTokens : res.RawTokens;
+                _stats = new Stats(_stats.RawTokens + res.RawTokens, _stats.OutTokens + (res.OutTokens > 0 ? res.OutTokens : res.RawTokens));
             }
             try { _o.OnResult?.Invoke(text, res); } catch { /* an observer must never break the app */ }
             return res;
@@ -198,6 +239,7 @@ public sealed class GascoigneClient
         }
     }
 
+    /// <summary>Returns the text the model should read.</summary>
     public async Task<string> OptimizeAsync(string text, Attrs? attrs = null, CancellationToken ct = default)
         => (await OptimizeResultAsync(text, attrs, ct)).Text;
 
@@ -214,7 +256,7 @@ public sealed class GascoigneClient
         => await ReadyAsync(ct) ? (api == "openai" ? BaseUrl + "/v1" : BaseUrl) : null;
 
     /// <summary>Tokens (estimated) before and after, summed over this client's calls.</summary>
-    public (long Raw, long Out) Stats() { lock (_lock) return (_rawTokens, _outTokens); }
+    public Stats Stats() { lock (_lock) return _stats; }
 
     /// <summary>Wraps a string-returning tool body, e.g. a Semantic Kernel function or an AIFunction.</summary>
     public Func<TArg, Task<string>> WrapTool<TArg>(string name, Func<TArg, Task<string>> fn)

@@ -5,7 +5,7 @@
 **Your agent framework reads less. Nothing gets lost.**
 
 Drop-in token optimization for tool results, in the languages and frameworks you already use.<br>
-`99% off a noisy log` · `Python · TypeScript · Go · Java · .NET · Rust` · `9 + 4 + 1 framework demos`
+`99% off a noisy log` · `Python · TypeScript · Go · Java · .NET · Rust` · `14 framework demos`
 
 </div>
 
@@ -54,11 +54,11 @@ Every SDK has the same surface: `optimize`, `raw`, `proxy_base_url`, `stats`, `w
 ## Demos (OpenRouter)
 
 Each demo gives an agent a tool that returns a 400-line service log and prints the before/after.
-The key stays in your environment:
+Each main file is the integration: **two added lines** (start gascoigne, wrap the tool). The noisy tool,
+OpenRouter settings and the report live in a small `kit` next to it.
 
 ```sh
-export OPENROUTER_API_KEY=sk-or-...
-export OPENROUTER_MODEL=openai/gpt-4o-mini        # optional
+cp .env.example .env        # put your OPENROUTER_API_KEY in it (the file is git-ignored)
 ```
 
 | Language | Frameworks | Run |
