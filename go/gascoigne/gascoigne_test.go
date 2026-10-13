@@ -28,7 +28,8 @@ func (f *fakeServer) serve(t *testing.T) {
 			f.posts.Add(1)
 			_ = json.NewDecoder(r.Body).Decode(&f.last)
 			w.WriteHeader(f.status)
-			_ = json.NewEncoder(w).Encode(Result{Text: "short", RawID: "abc", RawTokens: 100, OutTokens: 5})
+			reply := Result{Text: "short", RawID: "abc", RawTokens: 100, OutTokens: 5}
+			_ = json.NewEncoder(w).Encode(reply)
 		default:
 			_, _ = w.Write([]byte("original"))
 		}
@@ -88,8 +89,11 @@ func TestOptimizesThroughServer(t *testing.T) {
 	if raw, out := rt.Stats(); raw != 100 || out != 5 {
 		t.Fatalf("stats %d %d", raw, out)
 	}
-	if rt.Raw(ctx, "abc") != "original" || !strings.HasSuffix(rt.ProxyBaseURL(ctx, "openai"), "/v1") {
-		t.Fatal("raw or proxy url")
+	if rt.Raw(ctx, "abc") != "original" {
+		t.Fatal("raw original not returned")
+	}
+	if !strings.HasSuffix(rt.ProxyBaseURL(ctx, "openai"), "/v1") {
+		t.Fatal("proxy URL does not end in /v1")
 	}
 }
 

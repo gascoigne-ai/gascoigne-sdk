@@ -26,7 +26,8 @@ import java.util.function.Function;
 public final class Gascoigne {
     private static final int PROTO = 1;
     private static final String DEFAULT_ADDR = "127.0.0.1:7878";
-    private static final String INSTALL_HINT = "mise use -g go:github.com/gascoigne-ai/gascoigne-cli/cmd/gascoigne";
+    private static final String INSTALL_HINT =
+            "mise use -g go:github.com/gascoigne-ai/gascoigne-cli/cmd/gascoigne";
     private static final int BREAKER_FAILURES = 5;
     private static final Duration BREAKER_PAUSE = Duration.ofSeconds(60);
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -93,7 +94,8 @@ public final class Gascoigne {
     }
 
     private final Builder settings;
-    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofMillis(500)).build();
+    private final HttpClient http =
+            HttpClient.newBuilder().connectTimeout(Duration.ofMillis(500)).build();
     private final Object lock = new Object();
     private Boolean available;
     private int failures;
@@ -106,7 +108,8 @@ public final class Gascoigne {
     }
 
     private String baseUrl() {
-        String addr = settings.addr != null ? settings.addr : System.getenv("GASCOIGNE_SERVER_ADDR");
+        String addr =
+                settings.addr != null ? settings.addr : System.getenv("GASCOIGNE_SERVER_ADDR");
         return "http://" + (addr == null || addr.isEmpty() ? DEFAULT_ADDR : addr);
     }
 
@@ -129,13 +132,15 @@ public final class Gascoigne {
             HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl() + "/sdk/v1/health"))
                     .timeout(Duration.ofMillis(500))
                     .build();
-            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response =
+                    http.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
                 return false;
             }
             Health health = JSON.readValue(response.body(), Health.class);
             if (health.proto() != PROTO) {
-                warn("server speaks proto " + health.proto() + ", SDK " + PROTO + "; running without optimization");
+                warn("server speaks proto " + health.proto() + ", SDK " + PROTO
+                        + "; running without optimization");
             }
             return health.proto() == PROTO;
         } catch (IOException e) {
@@ -167,7 +172,8 @@ public final class Gascoigne {
     private boolean startServer() {
         Optional<Path> cli = findCli();
         if (cli.isEmpty()) {
-            warn("gascoigne-cli not found on PATH; running without optimization. Install: " + INSTALL_HINT);
+            warn("gascoigne-cli not found on PATH; running without optimization. Install: "
+                    + INSTALL_HINT);
             return false;
         }
         try {
@@ -179,7 +185,8 @@ public final class Gascoigne {
                 process.destroyForcibly();
             }
         } catch (IOException e) {
-            warn("could not start gascoigne server (" + e.getMessage() + "); running without optimization");
+            warn("could not start gascoigne server (" + e.getMessage()
+                    + "); running without optimization");
             return false;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -234,11 +241,13 @@ public final class Gascoigne {
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(body)))
                     .build();
-            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response =
+                    http.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
                 return Optional.empty();
             }
-            return Optional.of(JSON.readValue(response.body(), Result.class)).filter(r -> r.text() != null);
+            Result result = JSON.readValue(response.body(), Result.class);
+            return Optional.of(result).filter(r -> r.text() != null);
         } catch (JsonProcessingException e) {
             return Optional.empty();
         } catch (IOException e) {
@@ -254,7 +263,8 @@ public final class Gascoigne {
         if (text == null || text.isEmpty() || !ready()) {
             return Result.unchanged(text);
         }
-        Optional<Result> result = post(OptimizeRequest.of(text, settings.agent, settings.session, attrs));
+        OptimizeRequest body = OptimizeRequest.of(text, settings.agent, settings.session, attrs);
+        Optional<Result> result = post(body);
         if (result.isEmpty()) {
             recordFailure();
             return Result.unchanged(text);
@@ -262,7 +272,8 @@ public final class Gascoigne {
         synchronized (lock) {
             failures = 0;
             Result r = result.get();
-            stats = new Stats(stats.rawTokens() + r.rawTokens(), stats.outTokens() + (r.outTokens() > 0 ? r.outTokens() : r.rawTokens()));
+            long out = r.outTokens() > 0 ? r.outTokens() : r.rawTokens();
+            stats = new Stats(stats.rawTokens() + r.rawTokens(), stats.outTokens() + out);
         }
         notifyObserver(text, result.get());
         return result.get();
@@ -287,10 +298,12 @@ public final class Gascoigne {
             return "";
         }
         try {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl() + "/sdk/v1/raw/" + rawId))
+            URI uri = URI.create(baseUrl() + "/sdk/v1/raw/" + rawId);
+            HttpRequest request = HttpRequest.newBuilder(uri)
                     .timeout(settings.timeout)
                     .build();
-            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response =
+                    http.send(request, HttpResponse.BodyHandlers.ofString());
             return response.statusCode() == 200 ? response.body() : "";
         } catch (IOException e) {
             recordFailure();

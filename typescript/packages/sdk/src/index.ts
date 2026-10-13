@@ -132,7 +132,9 @@ export class Runtime {
       if (!r.ok) return false;
       const { proto } = (await r.json()) as { proto?: number };
       if (proto !== PROTO) {
-        this.warn(`gascoigne server speaks proto ${proto}, SDK ${PROTO}; running without optimization`);
+        this.warn(
+          `gascoigne server speaks proto ${proto}, SDK ${PROTO}; running without optimization`,
+        );
         return false;
       }
       return true;
@@ -144,7 +146,9 @@ export class Runtime {
   private async startServer(): Promise<boolean> {
     const exe = process.env.GASCOIGNE_BIN || findOnPath("gascoigne");
     if (!exe) {
-      this.warn(`gascoigne-cli not found on PATH; running without optimization. Install: ${INSTALL_HINT}`);
+      this.warn(
+        `gascoigne-cli not found on PATH; running without optimization. Install: ${INSTALL_HINT}`,
+      );
       return false;
     }
     try {
@@ -196,12 +200,18 @@ export class Runtime {
   async optimizeResult(text: string, attrs: Attrs = {}): Promise<Result> {
     const same: Result = { text, rawId: "", rawTokens: 0, outTokens: 0, skipped: "" };
     if (!text || !(await this.ready())) return same;
-    const request: OptimizeRequest = { text, agent: this.opts.agent, session: this.opts.session, ...attrs };
+    const request: OptimizeRequest = {
+      text,
+      agent: this.opts.agent,
+      session: this.opts.session,
+      ...attrs,
+    };
     try {
       const r = await fetch(`${this.baseUrl}/sdk/v1/optimize`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(request), // undefined fields are not serialized
+        // undefined fields are not serialized
+        body: JSON.stringify(request),
         signal: AbortSignal.timeout(this.opts.timeoutMs ?? 5000),
       });
       if (!r.ok) throw new Error(`status ${r.status}`);
@@ -246,7 +256,9 @@ export class Runtime {
   }
 
   /** Base URL that routes an LLM client through the gascoigne proxy, or undefined in bypass. */
-  async proxyBaseUrl(api: "openai" | "anthropic" | "gemini" = "openai"): Promise<string | undefined> {
+  async proxyBaseUrl(
+    api: "openai" | "anthropic" | "gemini" = "openai",
+  ): Promise<string | undefined> {
     if (!(await this.ready())) return undefined;
     return api === "openai" ? `${this.baseUrl}/v1` : this.baseUrl;
   }

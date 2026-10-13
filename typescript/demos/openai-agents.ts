@@ -12,8 +12,11 @@ import OpenAI from "openai";
 import { z } from "zod";
 import { openrouter, PROMPT, run, searchLogs } from "./kit.js";
 
-init({ agent: "openai-agents-js" }); // 1. start gascoigne
-const logs = wrapTool(searchLogs, "search_logs"); // 2. wrap the tool
+// 1. Start gascoigne.
+init({ agent: "openai-agents-js" });
+
+// 2. Wrap the tool.
+const logs = wrapTool(searchLogs, "search_logs");
 
 const { model, apiKey, baseURL } = openrouter();
 setTracingDisabled(true);

@@ -5,6 +5,9 @@ using Xunit;
 
 public sealed class ClientTests : IDisposable
 {
+    private const string OptimizeReply =
+        "{\"text\":\"short\",\"raw_id\":\"abc\",\"raw_tokens\":100,\"out_tokens\":5}";
+
     private HttpListener? _l;
     private readonly List<string> _posts = new();
 
@@ -27,7 +30,7 @@ public sealed class ClientTests : IDisposable
                 {
                     _posts.Add(await new StreamReader(c.Request.InputStream).ReadToEndAsync());
                     status = optimizeStatus;
-                    body = "{\"text\":\"short\",\"raw_id\":\"abc\",\"raw_tokens\":100,\"out_tokens\":5}";
+                    body = OptimizeReply;
                 }
                 else body = "original";
                 var b = Encoding.UTF8.GetBytes(body);
@@ -45,7 +48,12 @@ public sealed class ClientTests : IDisposable
     public async Task MissingCliWarnsOnceAndPassesThrough()
     {
         var warnings = new List<string>();
-        var g = new GascoigneClient(new GascoigneOptions { Addr = "127.0.0.1:9", SearchPath = "", Warn = warnings.Add });
+        var g = new GascoigneClient(new GascoigneOptions
+        {
+            Addr = "127.0.0.1:9",
+            SearchPath = "",
+            Warn = warnings.Add,
+        });
         Assert.Equal("hello", await g.OptimizeAsync("hello"));
         Assert.Equal("again", await g.OptimizeAsync("again"));
         Assert.Null(await g.ProxyBaseUrlAsync());
@@ -57,8 +65,14 @@ public sealed class ClientTests : IDisposable
     public async Task OptimizesThroughServer()
     {
         var seen = new List<string>();
-        var g = new GascoigneClient(new GascoigneOptions { Agent = "demo", Addr = Serve(1, 200), OnResult = (_, r) => seen.Add(r.RawId) });
-        var res = await g.OptimizeResultAsync(string.Concat(Enumerable.Repeat("long ", 100)), new Attrs { Tool = "grep" });
+        var g = new GascoigneClient(new GascoigneOptions
+        {
+            Agent = "demo",
+            Addr = Serve(1, 200),
+            OnResult = (_, r) => seen.Add(r.RawId),
+        });
+        var text = string.Concat(Enumerable.Repeat("long ", 100));
+        var res = await g.OptimizeResultAsync(text, new Attrs { Tool = "grep" });
         Assert.Equal(("short", "abc", 5L), (res.Text, res.RawId, res.OutTokens));
         Assert.Contains("\"agent\":\"demo\"", _posts[0]);
         Assert.Contains("\"tool\":\"grep\"", _posts[0]);
@@ -71,7 +85,12 @@ public sealed class ClientTests : IDisposable
     [Fact]
     public async Task UnknownProtoBypasses()
     {
-        var g = new GascoigneClient(new GascoigneOptions { Addr = Serve(99, 200), SearchPath = "", Warn = _ => { } });
+        var g = new GascoigneClient(new GascoigneOptions
+        {
+            Addr = Serve(99, 200),
+            SearchPath = "",
+            Warn = _ => { },
+        });
         Assert.Equal("x", await g.OptimizeAsync("x"));
         Assert.Empty(_posts);
     }

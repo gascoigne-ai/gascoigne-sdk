@@ -1,74 +1,10 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Gascoigne;
-
-/// <summary>One optimize call: <see cref="Text"/> is what the model should read.</summary>
-public sealed record Result(
-    [property: JsonPropertyName("text")] string Text,
-    [property: JsonPropertyName("raw_id")] string RawId = "",
-    [property: JsonPropertyName("raw_tokens")] long RawTokens = 0,
-    [property: JsonPropertyName("out_tokens")] long OutTokens = 0,
-    [property: JsonPropertyName("skipped")] string Skipped = "");
-
-/// <summary>Tokens (estimated) before and after, summed over a client's calls.</summary>
-public readonly record struct Stats(long RawTokens, long OutTokens)
-{
-    /// <summary>Fraction of tokens saved, 0 when nothing was optimized.</summary>
-    public double Saved => RawTokens == 0 ? 0 : 1 - (double)OutTokens / RawTokens;
-}
-
-/// <summary>Body of <c>POST /sdk/v1/optimize</c>; unset fields are not sent.</summary>
-internal sealed record OptimizeRequest(
-    string Text, string? Agent, string? Session, string? Tool, string? Cmd, string? Url, string? Query, string? Model)
-{
-    private static string? OrNull(string? value) => string.IsNullOrEmpty(value) ? null : value;
-
-    public static OptimizeRequest From(string text, GascoigneOptions options, Attrs? attrs) => new(
-        text, OrNull(options.Agent), OrNull(options.Session),
-        OrNull(attrs?.Tool), OrNull(attrs?.Cmd), OrNull(attrs?.Url), OrNull(attrs?.Query), OrNull(attrs?.Model));
-}
-
-/// <summary>Response of <c>GET /sdk/v1/health</c>.</summary>
-internal sealed record Health(
-    [property: JsonPropertyName("version")] string? Version,
-    [property: JsonPropertyName("proto")] int Proto);
-
-/// <summary>Where the text came from; null fields are left out.</summary>
-public sealed record Attrs
-{
-    /// <summary>Tool name.</summary>
-    public string? Tool { get; init; }
-    /// <summary>Shell command that produced the text.</summary>
-    public string? Cmd { get; init; }
-    /// <summary>URL the text was fetched from.</summary>
-    public string? Url { get; init; }
-    /// <summary>What the agent is looking for; guides lossy selection.</summary>
-    public string? Query { get; init; }
-    /// <summary>LLM model that will read the text.</summary>
-    public string? Model { get; init; }
-}
-
-/// <summary>Settings for <see cref="GascoigneClient"/>; the defaults work.</summary>
-public sealed class GascoigneOptions
-{
-    /// <summary>Agent or framework name, for per-agent stats.</summary>
-    public string Agent { get; init; } = "";
-    /// <summary>Session id, for per-session stats.</summary>
-    public string Session { get; init; } = "";
-    /// <summary>Per-call timeout.</summary>
-    public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(5);
-    /// <summary>Server address; default <c>$GASCOIGNE_SERVER_ADDR</c> or 127.0.0.1:7878.</summary>
-    public string? Addr { get; init; }
-    /// <summary>Where to look for the CLI instead of <c>$GASCOIGNE_BIN</c> and <c>$PATH</c>.</summary>
-    public string? SearchPath { get; init; }
-    /// <summary>Sees (original, result) after each optimized call; exceptions in it are ignored.</summary>
-    public Action<string, Result>? OnResult { get; init; }
-    /// <summary>Where the one-time warnings go.</summary>
-    public Action<string> Warn { get; init; } = m => Console.Error.WriteLine("[gascoigne] " + m);
-}
 
 /// <summary>
 /// Finds the CLI, makes sure its server runs, and optimizes text through it. Every call is safe:
@@ -78,7 +14,8 @@ public sealed class GascoigneClient : IDisposable
 {
     private const int Proto = 1;
     private const string DefaultAddr = "127.0.0.1:7878";
-    private const string InstallHint = "mise use -g go:github.com/gascoigne-ai/gascoigne-cli/cmd/gascoigne";
+    private const string InstallHint =
+        "mise use -g go:github.com/gascoigne-ai/gascoigne-cli/cmd/gascoigne";
     private const int BreakerFailures = 5;
     private static readonly TimeSpan BreakerPause = TimeSpan.FromSeconds(60);
 
@@ -88,15 +25,22 @@ public sealed class GascoigneClient : IDisposable
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    private readonly GascoigneOptions _o;
+    private readonly GascoigneOptions _options;
     private readonly HttpClient _http;
     private readonly SemaphoreSlim _probe = new(1, 1);
     private readonly object _lock = new();
-    private bool? _ready;
+    private bool? _available;
     private int _failures;
     private DateTime _pausedUntil = DateTime.MinValue;
     private bool _warned;
     private Stats _stats;
+
+    /// <summary>Creates a client; nothing is probed until the first call.</summary>
+    public GascoigneClient(GascoigneOptions? options = null)
+    {
+        _options = options ?? new GascoigneOptions();
+        _http = new HttpClient { Timeout = _options.Timeout };
+    }
 
     /// <summary>Releases the HTTP client.</summary>
     public void Dispose()
@@ -105,86 +49,127 @@ public sealed class GascoigneClient : IDisposable
         _probe.Dispose();
     }
 
-    /// <summary>Creates a client; nothing is probed until the first call.</summary>
-    public GascoigneClient(GascoigneOptions? options = null)
-    {
-        _o = options ?? new GascoigneOptions();
-        _http = new HttpClient { Timeout = _o.Timeout };
-    }
-
     private string BaseUrl
     {
         get
         {
-            var a = _o.Addr ?? Environment.GetEnvironmentVariable("GASCOIGNE_SERVER_ADDR");
-            return "http://" + (string.IsNullOrEmpty(a) ? DefaultAddr : a);
+            var addr = _options.Addr ?? Environment.GetEnvironmentVariable("GASCOIGNE_SERVER_ADDR");
+            return "http://" + (string.IsNullOrEmpty(addr) ? DefaultAddr : addr);
         }
     }
 
-    private static bool EnvIs(string name, string value) => Environment.GetEnvironmentVariable(name) == value;
+    private static bool EnvIs(string name, string value) =>
+        Environment.GetEnvironmentVariable(name) == value;
 
-    private void Warn(string msg)
+    private void Warn(string message)
     {
         lock (_lock)
         {
-            if (_warned) return;
+            if (_warned)
+            {
+                return;
+            }
+
             _warned = true;
         }
-        _o.Warn(msg);
+
+        _options.Warn(message);
     }
 
     private async Task<bool> HealthyAsync(CancellationToken ct)
     {
         try
         {
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromMilliseconds(500));
-            using var resp = await _http.GetAsync($"{BaseUrl}/sdk/v1/health", cts.Token);
-            if (!resp.IsSuccessStatusCode) return false;
-            var health = await resp.Content.ReadFromJsonAsync<Health>(cts.Token);
-            if (health?.Proto == Proto) return true;
-            Warn($"server speaks proto {health?.Proto}, SDK {Proto}; running without optimization");
-            return false;
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromMilliseconds(500));
+            using var response = await _http.GetAsync($"{BaseUrl}/sdk/v1/health", timeout.Token);
+            if (!response.IsSuccessStatusCode)
+            {
+                return false;
+            }
+
+            var health = await response.Content.ReadFromJsonAsync<Health>(timeout.Token);
+            if (health?.Proto != Proto)
+            {
+                Warn($"server speaks proto {health?.Proto}, SDK {Proto}; "
+                    + "running without optimization");
+            }
+
+            return health?.Proto == Proto;
         }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException)
+        catch (Exception e) when (IsTransient(e))
         {
             return false;
         }
     }
+
+    private static bool IsTransient(Exception e) =>
+        e is HttpRequestException
+            or TaskCanceledException
+            or JsonException
+            or NotSupportedException;
 
     private string? FindCli()
     {
         var bin = Environment.GetEnvironmentVariable("GASCOIGNE_BIN");
-        if (_o.SearchPath is null && !string.IsNullOrEmpty(bin)) return bin;
-        var path = _o.SearchPath ?? Environment.GetEnvironmentVariable("PATH") ?? "";
-        var names = OperatingSystem.IsWindows() ? new[] { "gascoigne.exe" } : new[] { "gascoigne" };
+        if (_options.SearchPath is null && !string.IsNullOrEmpty(bin))
+        {
+            return bin;
+        }
+
+        var path = _options.SearchPath ?? Environment.GetEnvironmentVariable("PATH") ?? "";
+        var name = OperatingSystem.IsWindows() ? "gascoigne.exe" : "gascoigne";
         return path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
-            .SelectMany(d => names.Select(n => Path.Combine(d, n))).FirstOrDefault(File.Exists);
+            .Select(dir => Path.Combine(dir, name))
+            .FirstOrDefault(File.Exists);
     }
 
     private async Task<bool> StartServerAsync(CancellationToken ct)
     {
-        var exe = FindCli();
-        if (exe is null)
+        var cli = FindCli();
+        if (cli is null)
         {
-            Warn("gascoigne-cli not found on PATH; running without optimization. Install: " + InstallHint);
+            Warn("gascoigne-cli not found on PATH; running without optimization. "
+                + $"Install: {InstallHint}");
             return false;
         }
+
         try
         {
-            using var p = Process.Start(new ProcessStartInfo(exe, "server start")
-            { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false })!;
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(10));
-            await p.WaitForExitAsync(cts.Token);
+            var start = new ProcessStartInfo(cli, "server start")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            };
+            using var process = Process.Start(start)!;
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(10));
+            await process.WaitForExitAsync(timeout.Token);
         }
-        catch (Exception e) when (e is System.ComponentModel.Win32Exception or OperationCanceledException or InvalidOperationException)
+        catch (Exception e) when (e is Win32Exception or OperationCanceledException)
         {
-            Warn($"could not start gascoigne server ({e.Message}); running without optimization");
+            Warn($"could not start gascoigne server ({e.Message}); "
+                + "running without optimization");
             return false;
         }
-        for (var end = DateTime.UtcNow.AddSeconds(3); DateTime.UtcNow < end; await Task.Delay(100, ct))
-            if (await HealthyAsync(ct)) return true;
+
+        return await AwaitHealthyAsync(ct);
+    }
+
+    private async Task<bool> AwaitHealthyAsync(CancellationToken ct)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(3);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (await HealthyAsync(ct))
+            {
+                return true;
+            }
+
+            await Task.Delay(100, ct);
+        }
+
         Warn("gascoigne server did not come up; running without optimization");
         return false;
     }
@@ -192,73 +177,146 @@ public sealed class GascoigneClient : IDisposable
     /// <summary>True when optimize calls will be tried. Probes once, then remembers.</summary>
     public async Task<bool> ReadyAsync(CancellationToken ct = default)
     {
-        if (EnvIs("GASCOIGNE_SDK", "off") || EnvIs("GASCOIGNE_SERVER", "off")) return false;
-        if (_ready is null)
+        if (EnvIs("GASCOIGNE_SDK", "off") || EnvIs("GASCOIGNE_SERVER", "off"))
+        {
+            return false;
+        }
+
+        if (_available is null)
         {
             await _probe.WaitAsync(ct);
-            try { _ready ??= await HealthyAsync(ct) || await StartServerAsync(ct); }
-            finally { _probe.Release(); }
+            try
+            {
+                _available ??= await HealthyAsync(ct) || await StartServerAsync(ct);
+            }
+            finally
+            {
+                _probe.Release();
+            }
         }
-        return _ready == true && DateTime.UtcNow >= _pausedUntil;
+
+        return _available == true && DateTime.UtcNow >= _pausedUntil;
     }
 
-    private void Failed()
+    private void RecordFailure()
     {
         lock (_lock)
         {
-            if (++_failures < BreakerFailures) return;
+            if (++_failures < BreakerFailures)
+            {
+                return;
+            }
+
             _failures = 0;
             _pausedUntil = DateTime.UtcNow + BreakerPause;
         }
     }
 
-    /// <summary>Optimizes text; on any problem the result carries the input unchanged.</summary>
-    public async Task<Result> OptimizeResultAsync(string text, Attrs? attrs = null, CancellationToken ct = default)
+    private void RecordSuccess(Result result)
     {
-        var same = new Result(text);
-        if (string.IsNullOrEmpty(text) || !await ReadyAsync(ct)) return same;
-        var request = OptimizeRequest.From(text, _o, attrs);
+        lock (_lock)
+        {
+            _failures = 0;
+            var after = result.OutTokens > 0 ? result.OutTokens : result.RawTokens;
+            _stats = new Stats(_stats.RawTokens + result.RawTokens, _stats.OutTokens + after);
+        }
+    }
+
+    /// <summary>Optimizes text; on any problem the result carries the input unchanged.</summary>
+    public async Task<Result> OptimizeResultAsync(
+        string text, Attrs? attrs = null, CancellationToken ct = default)
+    {
+        var unchanged = new Result(text);
+        if (string.IsNullOrEmpty(text) || !await ReadyAsync(ct))
+        {
+            return unchanged;
+        }
+
+        var request = OptimizeRequest.From(text, _options, attrs);
         try
         {
-            using var resp = await _http.PostAsJsonAsync($"{BaseUrl}/sdk/v1/optimize", request, RequestJson, ct);
-            resp.EnsureSuccessStatusCode();
-            var res = await resp.Content.ReadFromJsonAsync<Result>(ct);
-            if (res is null || res.Text is null) { Failed(); return same; }
-            lock (_lock)
+            using var response = await _http.PostAsJsonAsync(
+                $"{BaseUrl}/sdk/v1/optimize", request, RequestJson, ct);
+            response.EnsureSuccessStatusCode();
+            var result = await response.Content.ReadFromJsonAsync<Result>(ct);
+            if (result?.Text is null)
             {
-                _failures = 0;
-                _stats = new Stats(_stats.RawTokens + res.RawTokens, _stats.OutTokens + (res.OutTokens > 0 ? res.OutTokens : res.RawTokens));
+                RecordFailure();
+                return unchanged;
             }
-            try { _o.OnResult?.Invoke(text, res); } catch { /* an observer must never break the app */ }
-            return res;
+
+            RecordSuccess(result);
+            NotifyObserver(text, result);
+            return result;
         }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or JsonException or NotSupportedException)
+        catch (Exception e) when (IsTransient(e))
         {
-            Failed();
-            return same;
+            RecordFailure();
+            return unchanged;
+        }
+    }
+
+    private void NotifyObserver(string original, Result result)
+    {
+        try
+        {
+            _options.OnResult?.Invoke(original, result);
+        }
+        catch (Exception)
+        {
+            // An observer must never break the host app.
         }
     }
 
     /// <summary>Returns the text the model should read.</summary>
-    public async Task<string> OptimizeAsync(string text, Attrs? attrs = null, CancellationToken ct = default)
-        => (await OptimizeResultAsync(text, attrs, ct)).Text;
+    public async Task<string> OptimizeAsync(
+        string text, Attrs? attrs = null, CancellationToken ct = default) =>
+        (await OptimizeResultAsync(text, attrs, ct)).Text;
 
     /// <summary>The original behind an optimized result; empty when unavailable.</summary>
     public async Task<string> RawAsync(string rawId, CancellationToken ct = default)
     {
-        if (!await ReadyAsync(ct)) return "";
-        try { return await _http.GetStringAsync($"{BaseUrl}/sdk/v1/raw/{Uri.EscapeDataString(rawId)}", ct); }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException) { Failed(); return ""; }
+        if (!await ReadyAsync(ct))
+        {
+            return "";
+        }
+
+        try
+        {
+            var url = $"{BaseUrl}/sdk/v1/raw/{Uri.EscapeDataString(rawId)}";
+            return await _http.GetStringAsync(url, ct);
+        }
+        catch (Exception e) when (IsTransient(e))
+        {
+            RecordFailure();
+            return "";
+        }
     }
 
-    /// <summary>Base URL that routes an LLM client through the gascoigne proxy, null in bypass.</summary>
-    public async Task<string?> ProxyBaseUrlAsync(string api = "openai", CancellationToken ct = default)
-        => await ReadyAsync(ct) ? (api == "openai" ? BaseUrl + "/v1" : BaseUrl) : null;
+    /// <summary>
+    /// Base URL that routes an LLM client through the gascoigne proxy, null in bypass.
+    /// </summary>
+    public async Task<string?> ProxyBaseUrlAsync(
+        string api = "openai", CancellationToken ct = default)
+    {
+        if (!await ReadyAsync(ct))
+        {
+            return null;
+        }
+
+        return api == "openai" ? $"{BaseUrl}/v1" : BaseUrl;
+    }
 
     /// <summary>Tokens (estimated) before and after, summed over this client's calls.</summary>
-    public Stats Stats() { lock (_lock) return _stats; }
+    public Stats Stats()
+    {
+        lock (_lock)
+        {
+            return _stats;
+        }
+    }
 
-    /// <summary>Wraps a string-returning tool body, e.g. a Semantic Kernel function or an AIFunction.</summary>
-    public Func<TArg, Task<string>> WrapTool<TArg>(string name, Func<TArg, Task<string>> fn)
-        => async a => await OptimizeAsync(await fn(a), new Attrs { Tool = name });
+    /// <summary>Wraps a string-returning tool body, e.g. a Semantic Kernel function.</summary>
+    public Func<TArg, Task<string>> WrapTool<TArg>(string name, Func<TArg, Task<string>> tool) =>
+        async arg => await OptimizeAsync(await tool(arg), new Attrs { Tool = name });
 }

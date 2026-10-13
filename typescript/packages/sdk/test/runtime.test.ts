@@ -18,7 +18,9 @@ async function serve(opts: { proto?: number; optimizeStatus?: number } = {}) {
       if (req.url === "/sdk/v1/optimize") {
         posts.push(body);
         res.statusCode = opts.optimizeStatus ?? 200;
-        return res.end(JSON.stringify({ text: "short", raw_id: "abc", raw_tokens: 100, out_tokens: 5 }));
+        return res.end(
+          JSON.stringify({ text: "short", raw_id: "abc", raw_tokens: 100, out_tokens: 5 }),
+        );
       }
       res.end("original");
     });

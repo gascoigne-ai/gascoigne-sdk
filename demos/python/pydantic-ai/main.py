@@ -7,10 +7,12 @@ from pydantic_ai.providers.openrouter import OpenRouterProvider
 
 from demo_kit import PROMPT, openrouter, run, search_logs
 
-gascoigne.init(agent="pydantic-ai")  # 1. start gascoigne
-search_logs = gascoigne.wrap_tool(search_logs)  # 2. wrap the tool
+# 1. Start gascoigne.
+gascoigne.init(agent="pydantic-ai")
 
-cfg = openrouter()
-model = OpenAIChatModel(cfg.model, provider=OpenRouterProvider(api_key=cfg.api_key))
+# 2. Wrap the tool.
+search_logs = gascoigne.wrap_tool(search_logs)
+
+model = OpenAIChatModel(openrouter.model, provider=OpenRouterProvider(api_key=openrouter.api_key))
 agent = Agent(model, tools=[search_logs])
 run(lambda: agent.run_sync(PROMPT).output, search_logs)

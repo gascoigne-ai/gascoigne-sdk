@@ -11,7 +11,7 @@ import subprocess
 import threading
 import time
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 import httpx
 
@@ -42,9 +42,11 @@ class Runtime:
         self.agent = agent
         self.session = session
         self.timeout = timeout
-        self.on_result = on_result  # called with (original, result) after each optimized call
+        # called with (original, result) after each optimized call
+        self.on_result = on_result
         self._lock = threading.Lock()
-        self._available: bool | None = None  # None until probed
+        # None until probed
+        self._available: bool | None = None
         self._failures = 0
         self._paused_until = 0.0
         self._warned = False
@@ -165,7 +167,8 @@ class Runtime:
             return
         try:
             self.on_result(original, result)
-        except Exception as e:  # an observer must never break the host app
+        # an observer must never break the host app
+        except Exception as e:
             log.debug("on_result failed: %s", e)
 
     def stats(self) -> Stats:
@@ -207,14 +210,14 @@ class Runtime:
                 out = await fn(*a, **kw)
                 return self.optimize(out, tool=tool) if isinstance(out, str) else out
 
-            return awrapper  # type: ignore[return-value]
+            return cast(F, awrapper)
 
         @functools.wraps(fn)
         def wrapper(*a: Any, **kw: Any) -> Any:
             out = fn(*a, **kw)
             return self.optimize(out, tool=tool) if isinstance(out, str) else out
 
-        return wrapper  # type: ignore[return-value]
+        return cast(F, wrapper)
 
 
 _default = Runtime()

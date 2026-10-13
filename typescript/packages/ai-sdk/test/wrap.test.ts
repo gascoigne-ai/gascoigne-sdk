@@ -4,7 +4,8 @@ import { wrapTools } from "../src/index.js";
 
 describe("wrapTools", () => {
   it("optimizes string results and keeps the rest", async () => {
-    process.env.GASCOIGNE_SDK = "off"; // bypass: wrapper must be transparent
+    // bypass: wrapper must be transparent
+    process.env.GASCOIGNE_SDK = "off";
     const rt = new Runtime();
     const tools = wrapTools(
       {

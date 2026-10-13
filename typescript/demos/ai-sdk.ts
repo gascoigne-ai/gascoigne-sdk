@@ -6,10 +6,11 @@ import { generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
 import { openrouter, PROMPT, run, searchLogs } from "./kit.js";
 
-init({ agent: "vercel-ai-sdk" }); // 1. start gascoigne
+// 1. Start gascoigne.
+init({ agent: "vercel-ai-sdk" });
 
 const tools = wrapTools({
-  // 2. wrap the tools
+  // 2. Wrap the tools.
   search_logs: tool({
     description: "Return the recent service logs.",
     inputSchema: z.object({}),
