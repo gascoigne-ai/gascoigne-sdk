@@ -13,7 +13,7 @@ jobs:
     environment: pypi
     steps:
       - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v4
       - run: mise run py:check
       - run: cd python/gascoigne && uv build && uv publish --trusted-publishing always   # PyPI trusted publishing (OIDC)
       - uses: actions/attest-build-provenance@v2
@@ -26,7 +26,7 @@ jobs:
     environment: npm
     steps:
       - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v4
       - run: mise run ts:check
       - run: cd typescript && pnpm -r --filter "./packages/*" publish --access public --no-git-checks
         env: { NODE_AUTH_TOKEN: "${{ secrets.NPM_TOKEN }}", NPM_CONFIG_PROVENANCE: "true" }
@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:                      # the Go proxy serves the tag itself; verify, then announce
       - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v4
       - run: mise run go:check
       - run: gh release create "$GITHUB_REF_NAME" --generate-notes
 
@@ -47,7 +47,7 @@ jobs:
     environment: maven-central
     steps:
       - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v4
       - run: mise run java:check
       - run: cd java && mvn -B -q package -DskipTests
       - run: gh release create "$GITHUB_REF_NAME" java/target/*.jar --generate-notes
@@ -59,7 +59,7 @@ jobs:
     environment: nuget
     steps:
       - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v4
       - run: mise run dotnet:check
       - run: cd dotnet && dotnet pack src/Gascoigne -c Release -o out && dotnet pack src/Gascoigne.Extensions.AI -c Release -o out
       - run: cd dotnet && dotnet nuget push out/*.nupkg --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json
@@ -71,7 +71,7 @@ jobs:
     environment: crates-io
     steps:
       - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v4
       - run: mise run rust:check
       - run: cd rust && cargo publish
         env: { CARGO_REGISTRY_TOKEN: "${{ secrets.CARGO_REGISTRY_TOKEN }}" }
