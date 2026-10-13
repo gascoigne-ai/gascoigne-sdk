@@ -18,6 +18,8 @@ echo "-- java / spring-ai"
 (cd demos/java && java -jar spring-ai/wrap/target/demo-spring-ai-wrap-0.0.0.jar | tail -2)
 echo "-- java / langchain4j"
 (cd demos/java && mvn -q -B -pl langchain4j/wrap exec:java | tail -2)
+echo "-- dotnet / microsoft-extensions-ai"
+(cd demos/dotnet && dotnet run --project microsoft-extensions-ai/wrap | tail -2)
 echo "-- go / langchaingo"
 (cd demos/go && go run ./langchaingo/wrap | tail -2)
 echo "-- rust / plain"

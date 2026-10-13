@@ -21,6 +21,8 @@ demos/
     spring-ai/{wrap,proxy,auto}        langchain4j/wrap
   go/                   # Go module; kit/ is the shared helper
     langchaingo/{wrap,proxy}
+  dotnet/               # kit/ is the shared helper
+    microsoft-extensions-ai/{wrap,auto}
   rust/plain/wrap.rs    # no framework, no LLM
 ```
 
@@ -38,6 +40,7 @@ cp .env.example .env     # in the repo root; put your OPENROUTER_API_KEY in it
 | Python | `cd demos/python && uv run --extra langgraph python langgraph/wrap.py` (`proxy.py`, `auto.py` the same way; for `auto.py` use `--extra auto-mcp`) |
 | TypeScript | `cd demos/typescript && pnpm install && pnpm ai-sdk:wrap` (or `:proxy`) |
 | Java | `mvn -f java/pom.xml install -DskipTests && mvn -f java/spring-ai/pom.xml install -DskipTests && cd demos/java && mvn -q package && java -jar spring-ai/wrap/target/demo-spring-ai-wrap-0.0.0.jar` |
+| .NET | `cd demos/dotnet && dotnet run --project microsoft-extensions-ai/wrap` (or `auto`) |
 | Go | `cd demos/go && go run ./langchaingo/wrap` |
 | Rust | `cd rust && cargo run --example plain` |
 
