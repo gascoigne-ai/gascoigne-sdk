@@ -18,13 +18,12 @@ init({ agent: "openai-agents-js" });
 // 2. Wrap the tool.
 const logs = wrapTool(searchLogs, "search_logs");
 
-const { model, apiKey, baseURL } = openrouter();
 setTracingDisabled(true);
 setOpenAIAPI("chat_completions");
-setDefaultOpenAIClient(new OpenAI({ baseURL, apiKey }));
+setDefaultOpenAIClient(new OpenAI({ baseURL: openrouter.baseURL, apiKey: openrouter.apiKey }));
 const agent = new Agent({
   name: "logs",
-  model,
+  model: openrouter.model,
   tools: [
     tool({
       name: "search_logs",

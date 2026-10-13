@@ -3,10 +3,14 @@
 Read the *_demo.py files, not this one.
 """
 
+import json
 import os
 import sys
+import time
+import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import gascoigne
@@ -14,9 +18,14 @@ from dotenv import find_dotenv, load_dotenv
 from rich import box
 from rich.console import Console
 from rich.panel import Panel
+from rich.table import Table
 from rich.text import Text
 
 load_dotenv(find_dotenv(usecwd=True))
+
+# A dedicated gascoigne server whose LLM proxy forwards to OpenRouter (see gascoigne.yaml).
+os.environ.setdefault("GASCOIGNE_CONFIG", str(Path(__file__).parents[2] / "gascoigne.yaml"))
+os.environ.setdefault("GASCOIGNE_SERVER_ADDR", "127.0.0.1:7879")
 
 console = Console()
 PROMPT = (
@@ -56,9 +65,11 @@ openrouter = OpenRouterSettings.from_env()
 
 def search_logs() -> str:
     """Return the recent service logs."""
+    # Request ids differ per run, as in real logs; the proxy caches identical results.
+    first_id = int(time.time()) % 1_000_000
     lines = [
         f"2026-10-13T12:{i // 60:02d}:{i % 60:02d}Z INFO worker-{i % 7} handled request "
-        f"id={i} status=200 took={i % 90}ms"
+        f"id={first_id + i} status=200 took={i % 90}ms"
         for i in range(400)
     ]
     lines.insert(250, "2026-10-13T12:04:10Z ERROR db connection timeout after 30s (pool exhausted)")
@@ -111,3 +122,59 @@ def run(ask: Callable[[], Any], tool: Callable[[], str]) -> None:
     summary.append(f"{stats.raw_tokens:,} -> {stats.out_tokens:,} tokens. ")
     summary.append(f"Original: gascoigne raw {result.raw_id}", style="dim")
     console.print(_panel(summary, "Savings", "cyan"))
+
+
+def _events(after: int = 0) -> list[dict[str, Any]]:
+    """Events the gascoigne server recorded after id `after`, oldest first."""
+    addr = os.environ["GASCOIGNE_SERVER_ADDR"]
+    try:
+        with urllib.request.urlopen(
+            f"http://{addr}/api/events?after={after}&limit=200", timeout=2
+        ) as r:
+            events = json.load(r)
+    except OSError:
+        return []
+    return sorted((e for e in events if e.get("pipeline") == "proxy"), key=lambda e: e["id"])
+
+
+def _await_results(after: int) -> list[dict[str, Any]]:
+    """Tool-result events after id `after`; the server records them just after answering."""
+    for _ in range(10):
+        results = [e for e in _events(after) if e["raw_tokens"] and e["route"] == "default"]
+        if results:
+            return results
+        time.sleep(0.2)
+    return []
+
+
+def run_proxy(ask: Callable[[], Any]) -> None:
+    """Run the agent, then list the tool results the gascoigne proxy shortened on the way."""
+    runtime = gascoigne.default()
+    console.print(
+        f"gascoigne proxy demo: {runtime.agent} via OpenRouter ({model()})\n", style="bold"
+    )
+    if dry():
+        console.print(
+            "Dry run: the proxy rewrites LLM requests, so there is nothing to show without one."
+        )
+        return
+    seen = max((e["id"] for e in _events()), default=0)
+    answer = str(ask())
+    console.print(_panel(answer.strip(), "Model answer", "green"))
+    results = _await_results(seen)
+    if not results:
+        console.print(
+            _panel("The proxy saw no new tool result. Is gascoigne on PATH?", "Bypassed", "yellow")
+        )
+        return
+    table = Table(box=box.ASCII, title="Tool results shortened by the proxy")
+    for column in ("Tool", "Before", "After", "Original"):
+        table.add_column(column)
+    for e in results:
+        table.add_row(
+            e["command"] or "tool result",
+            f"{e['raw_tokens']:,}",
+            f"{e['out_tokens']:,}",
+            f"gascoigne raw {e['raw_id']}",
+        )
+    console.print(table)

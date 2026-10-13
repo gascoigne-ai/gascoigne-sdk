@@ -18,12 +18,11 @@ const tools = wrapTools({
   }),
 });
 
-const { model, apiKey } = openrouter();
 await run(
   async () =>
     (
       await generateText({
-        model: createOpenRouter({ apiKey })(model),
+        model: createOpenRouter({ apiKey: openrouter.apiKey })(openrouter.model),
         tools,
         stopWhen: stepCountIs(5),
         prompt: PROMPT,

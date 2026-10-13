@@ -1,0 +1,5 @@
+# Config for the demo server: forward the gascoigne LLM proxy to OpenRouter.
+# Every other setting keeps its default.
+receivers:
+  httpproxy:
+    openai: https://openrouter.ai/api
