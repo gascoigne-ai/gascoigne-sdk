@@ -2,6 +2,7 @@ package ai.gascoigne;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -12,22 +13,26 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 class GascoigneTest {
+    private static final String OPTIMIZE_REPLY =
+            "{\"text\":\"short\",\"raw_id\":\"abc\",\"raw_tokens\":100,\"out_tokens\":5}";
+
     private HttpServer server;
     private final List<String> posts = new ArrayList<>();
 
     private String serve(int proto, int optimizeStatus) throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/sdk/v1/health", ex -> reply(ex, 200, "{\"version\":\"t\",\"proto\":" + proto + "}"));
+        String health = "{\"version\":\"t\",\"proto\":" + proto + "}";
+        server.createContext("/sdk/v1/health", ex -> reply(ex, 200, health));
         server.createContext("/sdk/v1/optimize", ex -> {
             posts.add(new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
-            reply(ex, optimizeStatus, "{\"text\":\"short\",\"raw_id\":\"abc\",\"raw_tokens\":100,\"out_tokens\":5}");
+            reply(ex, optimizeStatus, OPTIMIZE_REPLY);
         });
         server.createContext("/sdk/v1/raw/", ex -> reply(ex, 200, "original"));
         server.start();
         return "127.0.0.1:" + server.getAddress().getPort();
     }
 
-    private static void reply(com.sun.net.httpserver.HttpExchange ex, int status, String body) throws IOException {
+    private static void reply(HttpExchange ex, int status, String body) throws IOException {
         byte[] b = body.getBytes(StandardCharsets.UTF_8);
         ex.sendResponseHeaders(status, b.length);
         ex.getResponseBody().write(b);
@@ -48,12 +53,17 @@ class GascoigneTest {
 
     @Test void optimizesThroughServer() throws Exception {
         var seen = new ArrayList<String>();
-        var g = Gascoigne.builder().agent("demo").addr(serve(1, 200)).onResult((o, r) -> seen.add(r.rawId())).build();
+        var g = Gascoigne.builder()
+                .agent("demo")
+                .addr(serve(1, 200))
+                .onResult((original, result) -> seen.add(result.rawId()))
+                .build();
         var res = g.optimizeResult("long ".repeat(100), Attrs.tool("grep"));
         assertEquals("short", res.text());
         assertEquals("abc", res.rawId());
         assertEquals(5, res.outTokens());
-        assertTrue(posts.get(0).contains("\"agent\":\"demo\"") && posts.get(0).contains("\"tool\":\"grep\""));
+        assertTrue(posts.get(0).contains("\"agent\":\"demo\""));
+        assertTrue(posts.get(0).contains("\"tool\":\"grep\""));
         assertEquals(List.of("abc"), seen);
         assertEquals(new Stats(100, 5), g.stats());
         assertTrue(g.proxyBaseUrl("openai").orElseThrow().endsWith("/v1"));

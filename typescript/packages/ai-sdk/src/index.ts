@@ -9,7 +9,10 @@ interface ToolLike {
  * Wrap `execute` of every tool in a `tools` record; tools without `execute` pass through.
  * String results are optimized, other results are returned as they are.
  */
-export function wrapTools<T extends Record<string, ToolLike>>(tools: T, rt: Runtime = runtime()): T {
+export function wrapTools<T extends Record<string, ToolLike>>(
+  tools: T,
+  rt: Runtime = runtime(),
+): T {
   const out: Record<string, ToolLike> = {};
   for (const [name, t] of Object.entries(tools)) {
     const exec = t.execute;

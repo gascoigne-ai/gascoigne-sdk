@@ -6,15 +6,17 @@ from openai import AsyncOpenAI
 
 from demo_kit import PROMPT, openrouter, run, search_logs
 
-gascoigne.init(agent="openai-agents")  # 1. start gascoigne
-search_logs = gascoigne.wrap_tool(search_logs)  # 2. wrap the tool
+# 1. Start gascoigne.
+gascoigne.init(agent="openai-agents")
+
+# 2. Wrap the tool.
+search_logs = gascoigne.wrap_tool(search_logs)
 
 set_tracing_disabled(True)
-cfg = openrouter()
-client = AsyncOpenAI(base_url=cfg.base_url, api_key=cfg.api_key)
+client = AsyncOpenAI(base_url=openrouter.base_url, api_key=openrouter.api_key)
 agent = Agent(
     name="logs",
-    model=OpenAIChatCompletionsModel(model=cfg.model, openai_client=client),
+    model=OpenAIChatCompletionsModel(model=openrouter.model, openai_client=client),
     tools=[function_tool(search_logs)],
 )
 run(lambda: Runner.run_sync(agent, PROMPT).final_output, search_logs)

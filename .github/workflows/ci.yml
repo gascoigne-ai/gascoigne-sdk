@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [py:check, ts:check, go:check, java:check, dotnet:check, rust:check]
+        task: [style, py:check, ts:check, go:check, java:check, dotnet:check, rust:check]
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2

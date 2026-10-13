@@ -32,9 +32,9 @@ dir = "go"
 run = ["gofmt -l -e . | (! grep .)", "golangci-lint run ./...", "cd demos && golangci-lint run -c ../.golangci.yml ./...", "go test ./..."]
 
 [tasks."java:check"]
-description = "Java: compile with -Xlint:all -Werror, tests"
+description = "Java: -Xlint:all -Werror, tests, and the demos compile"
 dir = "java"
-run = "mvn -q -B test"
+run = ["mvn -q -B install", "mvn -q -B -f demos/pom.xml package -DskipTests"]
 
 [tasks."dotnet:check"]
 description = "dotnet: format, analyzers as errors, tests"
@@ -51,9 +51,15 @@ run = [
   "cargo test",
 ]
 
+[tasks.style]
+description = "100 columns, comments above code, ASCII-only source"
+run = "python3 scripts/style.py"
+
 [tasks.check]
 description = "Everything that must pass before a change is done"
-depends = ["py:check", "ts:check", "go:check", "java:check", "dotnet:check", "rust:check"]
+depends = [
+  "style", "py:check", "ts:check", "go:check", "java:check", "dotnet:check", "rust:check",
+]
 
 [tasks.e2e]
 description = "Python tests against a real gascoigne binary (GASCOIGNE_BIN or PATH)"

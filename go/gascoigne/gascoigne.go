@@ -70,7 +70,8 @@ const (
 // Options configure a Runtime. The zero value works.
 type Options struct {
 	Agent, Session string
-	Timeout        time.Duration // per call, default 5s
+	// per call, default 5s
+	Timeout time.Duration
 	// OnResult sees (original, result) after each optimized call.
 	OnResult func(original string, r Result)
 	Logger   *slog.Logger
@@ -136,7 +137,8 @@ func (r *Runtime) healthy(ctx context.Context) bool {
 		return false
 	}
 	if h.Proto != proto {
-		r.warn(fmt.Sprintf("server speaks proto %d, SDK %d; running without optimization", h.Proto, proto))
+		r.warn(fmt.Sprintf("server speaks proto %d, SDK %d; running without optimization",
+			h.Proto, proto))
 		return false
 	}
 	return true
@@ -147,20 +149,24 @@ func (r *Runtime) startServer(ctx context.Context) bool {
 	if exe == "" {
 		var err error
 		if exe, err = exec.LookPath("gascoigne"); err != nil {
-			r.warn("gascoigne-cli not found on PATH; running without optimization. Install: " + installHint)
+			r.warn("gascoigne-cli not found on PATH; running without optimization. Install: " +
+				installHint)
 			return false
 		}
 	}
 	sctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	if err := exec.CommandContext(sctx, exe, "server", "start").Run(); err != nil {
-		r.warn(fmt.Sprintf("could not start gascoigne server (%v); running without optimization", err))
+		r.warn(fmt.Sprintf("could not start gascoigne server (%v); running without optimization",
+			err))
 		return false
 	}
-	for end := time.Now().Add(3 * time.Second); time.Now().Before(end); time.Sleep(100 * time.Millisecond) {
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
 		if r.healthy(ctx) {
 			return true
 		}
+		time.Sleep(100 * time.Millisecond)
 	}
 	r.warn("gascoigne server did not come up; running without optimization")
 	return false
@@ -205,7 +211,8 @@ func (r *Runtime) OptimizeResult(ctx context.Context, text string, a Attrs) Resu
 	if err != nil {
 		return same
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL()+"/sdk/v1/optimize", bytes.NewReader(body))
+	url := r.baseURL() + "/sdk/v1/optimize"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return same
 	}
@@ -246,7 +253,8 @@ func (r *Runtime) Raw(ctx context.Context, rawID string) string {
 	if !r.Ready(ctx) {
 		return ""
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.baseURL()+"/sdk/v1/raw/"+rawID, nil)
+	url := r.baseURL() + "/sdk/v1/raw/" + rawID
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return ""
 	}
@@ -263,7 +271,7 @@ func (r *Runtime) Raw(ctx context.Context, rawID string) string {
 	return string(b)
 }
 
-// ProxyBaseURL routes an LLM client through the gascoigne proxy: api is "openai" (…/v1),
+// ProxyBaseURL routes an LLM client through the gascoigne proxy: api is "openai" (the /v1 root),
 // "anthropic" or "gemini". Empty in bypass.
 func (r *Runtime) ProxyBaseURL(ctx context.Context, api string) string {
 	if !r.Ready(ctx) {

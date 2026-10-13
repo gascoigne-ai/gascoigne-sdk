@@ -12,12 +12,16 @@ from google.genai import types
 
 from demo_kit import PROMPT, openrouter, run, search_logs
 
-gascoigne.init(agent="google-adk")  # 1. start gascoigne
-search_logs = gascoigne.wrap_tool(search_logs)  # 2. wrap the tool
+# 1. Start gascoigne.
+gascoigne.init(agent="google-adk")
 
-cfg = openrouter()
-os.environ["OPENROUTER_API_KEY"] = cfg.api_key
-agent = Agent(name="logs", model=LiteLlm(model=f"openrouter/{cfg.model}"), tools=[search_logs])
+# 2. Wrap the tool.
+search_logs = gascoigne.wrap_tool(search_logs)
+
+os.environ["OPENROUTER_API_KEY"] = openrouter.api_key
+agent = Agent(
+    name="logs", model=LiteLlm(model=f"openrouter/{openrouter.model}"), tools=[search_logs]
+)
 
 
 async def ask() -> str:

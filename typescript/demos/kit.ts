@@ -31,65 +31,55 @@ export function openrouter() {
 }
 
 export function searchLogs(): string {
-  const lines = Array.from(
-    { length: 400 },
-    (_, i) =>
-      `2026-10-13T12:${String(Math.floor(i / 60)).padStart(2, "0")}:${String(i % 60).padStart(2, "0")}Z ` +
-      `INFO worker-${i % 7} handled request id=${i} status=200 took=${i % 90}ms`,
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const lines = Array.from({ length: 400 }, (_, i) => {
+    const time = `12:${pad(Math.floor(i / 60))}:${pad(i % 60)}`;
+    return `2026-10-13T${time}Z INFO worker-${i % 7} handled request id=${i} took=${i % 90}ms`;
+  });
+  lines.splice(
+    250,
+    0,
+    "2026-10-13T12:04:10Z ERROR db connection timeout after 30s (pool exhausted)",
   );
-  lines.splice(250, 0, "2026-10-13T12:04:10Z ERROR db connection timeout after 30s (pool exhausted)");
   return lines.join("\n");
 }
 
-const c = (code: number, s: string) => (process.stdout.isTTY ? `\x1b[${code}m${s}\x1b[0m` : s);
-const W = 52;
-const seen: { before: string; res: Result }[] = [];
+const WIDTH = 72;
+const count = (n: number) => n.toLocaleString();
+const seen: { before: string; result: Result }[] = [];
 
-function box(title: string, body: string[], color: number): string {
-  const rows = body.map((l) => `│ ${l.slice(0, W - 2).padEnd(W - 2)} │`);
-  const top = `╭─ ${title} ${"─".repeat(Math.max(0, W - title.length - 4))}╮`;
-  return [top, ...rows, `╰${"─".repeat(W)}╯`].map((l) => c(color, l)).join("\n");
-}
-
-function preview(text: string, n = 8): string[] {
-  const lines = text.split("\n");
-  return [...lines.slice(0, n), ...(lines.length > n ? [`… ${lines.length - n} more lines`] : [])];
+/** The first lines of a text, each cut to the display width. */
+function preview(text: string, lines = 8): string {
+  const rows = text.split("\n");
+  const shown = rows.slice(0, lines);
+  if (rows.length > lines) shown.push(`... ${rows.length - lines} more lines`);
+  return shown.map((row) => `  ${row.slice(0, WIDTH)}`).join("\n");
 }
 
 /** Run the agent (`ask`), or just the tool in a dry run, then print what gascoigne saved. */
 export async function run(ask: () => Promise<unknown>, tool: () => unknown): Promise<void> {
-  const rt = sdk();
-  rt.setOnResult((before, res) => seen.push({ before, res }));
-  console.log(c(36, `🌘 gascoigne  ${rt.agent} → OpenRouter (${MODEL})`));
+  const runtime = sdk();
+  runtime.setOnResult((before, result) => seen.push({ before, result }));
+  console.log(`gascoigne demo: ${runtime.agent} via OpenRouter (${MODEL})\n`);
   let answer = "";
   if (dry) {
-    console.log(c(2, "dry run: no LLM call, only the tool"));
+    console.log("Dry run: no LLM call, only the tool.\n");
     await tool();
   } else {
     answer = String(await ask());
   }
-  if (answer) console.log(box("🤖 model answer", answer.trim().split("\n"), 32));
+  if (answer) console.log(`Model answer:\n${preview(answer, 20)}\n`);
   const last = seen.at(-1);
   if (!last) {
-    console.log(
-      c(
-        33,
-        "bypassed: is the gascoigne CLI on PATH?  mise use -g go:github.com/gascoigne-ai/gascoigne-cli/cmd/gascoigne",
-      ),
-    );
+    console.log("No optimization happened. Is the gascoigne CLI on PATH?");
+    console.log("Install: mise use -g go:github.com/gascoigne-ai/gascoigne-cli/cmd/gascoigne");
     return;
   }
-  console.log(box(`🐘 tool result · ${last.res.rawTokens} tokens`, preview(last.before), 31));
-  console.log(box(`🌘 model reads · ${last.res.outTokens} tokens`, preview(last.res.text), 32));
-  const { rawTokens: raw, outTokens: out } = stats();
-  const saved = raw ? 1 - out / raw : 0;
-  const filled = Math.round(saved * 30);
-  console.log(
-    c(36, "📉 savings ") +
-      c(32, "█".repeat(filled)) +
-      c(31, "░".repeat(30 - filled)) +
-      c(1, ` ${Math.round(saved * 100)}%`) +
-      `  ${raw.toLocaleString()} → ${out.toLocaleString()} tokens` +
-      c(2, `  original: gascoigne raw ${last.res.rawId}`),
-  );
+  const { result } = last;
+  console.log(`Tool result: ${count(result.rawTokens)} tokens\n${preview(last.before)}\n`);
+  console.log(`Model reads: ${count(result.outTokens)} tokens\n${preview(result.text)}\n`);
+  const { rawTokens, outTokens } = stats();
+  const saved = rawTokens ? Math.round((1 - outTokens / rawTokens) * 100) : 0;
+  console.log(`Saved ${saved}%: ${count(rawTokens)} -> ${count(outTokens)} tokens.`);
+  console.log(`Original: gascoigne raw ${last.result.rawId}`);
 }

@@ -1,5 +1,5 @@
-// Package kit holds everything a demo needs that is not about integrating gascoigne: env, OpenRouter
-// settings, the noisy tool, and the report. Read the demos' main.go, not this file.
+// Package kit holds everything a demo needs that is not about integrating gascoigne: env,
+// OpenRouter settings, the noisy tool, and the report. Read the demos' main.go, not this file.
 package kit
 
 import (
@@ -13,7 +13,13 @@ import (
 )
 
 // Prompt is what every demo asks.
-const Prompt = "Call the search_logs tool once, then tell me in one sentence what went wrong and for how long."
+const Prompt = "Call the search_logs tool once, then tell me in one sentence what went wrong " +
+	"and for how long."
+
+const (
+	infoLine  = "2026-10-13T12:%02d:%02dZ INFO worker-%d handled request id=%d status=200 took=%dms"
+	errorLine = "2026-10-13T12:04:10Z ERROR db connection timeout after 30s (pool exhausted)"
+)
 
 // Config is the OpenRouter connection.
 type Config struct{ Model, APIKey, BaseURL string }
@@ -52,7 +58,11 @@ func Dry() bool { return os.Getenv("GASCOIGNE_DEMO_DRY") == "1" }
 
 // OpenRouter returns the connection settings, exiting with a hint when the key is missing.
 func OpenRouter() Config {
-	c := Config{Model: "openai/gpt-4o-mini", APIKey: os.Getenv("OPENROUTER_API_KEY"), BaseURL: "https://openrouter.ai/api/v1"}
+	c := Config{
+		Model:   "openai/gpt-4o-mini",
+		APIKey:  os.Getenv("OPENROUTER_API_KEY"),
+		BaseURL: "https://openrouter.ai/api/v1",
+	}
 	if m := os.Getenv("OPENROUTER_MODEL"); m != "" {
 		c.Model = m
 	}
@@ -71,10 +81,9 @@ func SearchLogs() string {
 	lines := make([]string, 0, 401)
 	for i := range 400 {
 		if i == 250 {
-			lines = append(lines, "2026-10-13T12:04:10Z ERROR db connection timeout after 30s (pool exhausted)")
+			lines = append(lines, errorLine)
 		}
-		lines = append(lines, fmt.Sprintf("2026-10-13T12:%02d:%02dZ INFO worker-%d handled request id=%d status=200 took=%dms",
-			i/60, i%60, i%7, i, i%90))
+		lines = append(lines, fmt.Sprintf(infoLine, i/60, i%60, i%7, i, i%90))
 	}
 	return strings.Join(lines, "\n")
 }
@@ -87,28 +96,34 @@ func Observe(before *string, res *gascoigne.Result) func(string, gascoigne.Resul
 // Report prints the answer (if any) and what gascoigne saved.
 func Report(rt *gascoigne.Runtime, before string, res gascoigne.Result, answer string) {
 	if answer != "" {
-		fmt.Printf("🤖 %s\n\n", strings.TrimSpace(answer))
+		fmt.Printf("Model answer:\n%s\n\n", indent(answer))
 	}
 	if res.Text == "" {
-		fmt.Println("bypassed: is the gascoigne CLI on PATH?  mise use -g go:github.com/gascoigne-ai/gascoigne-cli/cmd/gascoigne")
+		fmt.Println("No optimization happened. Is the gascoigne CLI on PATH?")
+		fmt.Println("Install: mise use -g go:github.com/gascoigne-ai/gascoigne-cli/cmd/gascoigne")
 		return
 	}
-	fmt.Printf("🐘 tool result · %d tokens\n%s\n\n🌘 model reads · %d tokens\n%s\n\n",
-		res.RawTokens, preview(before), res.OutTokens, preview(res.Text))
+	fmt.Printf("Tool result: %d tokens\n%s\n\n", res.RawTokens, preview(before))
+	fmt.Printf("Model reads: %d tokens\n%s\n\n", res.OutTokens, preview(res.Text))
 	raw, out := rt.Stats()
-	saved := 1 - float64(out)/float64(raw)
-	n := int(saved * 30)
-	fmt.Printf("📉 savings \x1b[32m%s\x1b[31m%s\x1b[0m %.0f%%  %d → %d tokens  (original: gascoigne raw %s)\n",
-		strings.Repeat("█", n), strings.Repeat("░", 30-n), saved*100, raw, out, res.RawID)
+	fmt.Printf("Saved %.0f%%: %d -> %d tokens.\n", 100*(1-float64(out)/float64(raw)), raw, out)
+	fmt.Printf("Original: gascoigne raw %s\n", res.RawID)
 }
 
+// preview is the first lines of a text, each cut to the display width.
 func preview(s string) string {
-	lines := strings.Split(s, "\n")
-	if len(lines) > 8 {
-		lines = append(lines[:8], fmt.Sprintf("… %d more lines", len(lines)-8))
+	const lines, width = 8, 72
+	rows := strings.Split(s, "\n")
+	shown := rows[:min(len(rows), lines)]
+	if len(rows) > lines {
+		shown = append(shown, fmt.Sprintf("... %d more lines", len(rows)-lines))
 	}
-	for i, l := range lines {
-		lines[i] = "  │ " + l[:min(len(l), 72)]
+	for i, row := range shown {
+		shown[i] = row[:min(len(row), width)]
 	}
-	return strings.Join(lines, "\n")
+	return indent(strings.Join(shown, "\n"))
+}
+
+func indent(s string) string {
+	return "  " + strings.ReplaceAll(strings.TrimSpace(s), "\n", "\n  ")
 }

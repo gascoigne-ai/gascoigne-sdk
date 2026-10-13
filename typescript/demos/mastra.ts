@@ -6,8 +6,11 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
 import { openrouter, PROMPT, run, searchLogs } from "./kit.js";
 
-init({ agent: "mastra" }); // 1. start gascoigne
-const logs = wrapTool(searchLogs, "search_logs"); // 2. wrap the tool
+// 1. Start gascoigne.
+init({ agent: "mastra" });
+
+// 2. Wrap the tool.
+const logs = wrapTool(searchLogs, "search_logs");
 
 const { model, apiKey } = openrouter();
 const agent = new Agent({

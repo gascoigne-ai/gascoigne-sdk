@@ -68,7 +68,8 @@ def test_failures_return_input_and_open_breaker(httpx_mock):
     for _ in range(7):
         assert rt.optimize("text") == "text"
     posts = [r for r in httpx_mock.get_requests() if r.url.path.endswith("optimize")]
-    assert len(posts) == 5  # breaker opened after five failures
+    # breaker opened after five failures
+    assert len(posts) == 5
 
 
 def test_wrap_tool_sync_and_async(httpx_mock):

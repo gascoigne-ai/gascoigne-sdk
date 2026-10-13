@@ -6,8 +6,11 @@ import { createAgent } from "langchain";
 import { z } from "zod";
 import { openrouter, PROMPT, run, searchLogs } from "./kit.js";
 
-init({ agent: "langchain-js" }); // 1. start gascoigne
-const logs = wrapTool(searchLogs, "search_logs"); // 2. wrap the tool
+// 1. Start gascoigne.
+init({ agent: "langchain-js" });
+
+// 2. Wrap the tool.
+const logs = wrapTool(searchLogs, "search_logs");
 
 const searchTool = tool(async () => String(await logs()), {
   name: "search_logs",
@@ -22,6 +25,7 @@ const agent = createAgent({
 
 await run(
   async () =>
-    (await agent.invoke({ messages: [{ role: "user", content: PROMPT }] })).messages.at(-1)?.content,
+    (await agent.invoke({ messages: [{ role: "user", content: PROMPT }] })).messages.at(-1)
+      ?.content,
   logs,
 );

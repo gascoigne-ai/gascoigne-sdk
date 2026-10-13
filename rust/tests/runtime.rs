@@ -27,7 +27,12 @@ fn serve(proto: i64, optimize_status: u16) -> (String, Arc<AtomicUsize>, Arc<Mut
             } else {
                 (200, "original".into())
             };
-            let _ = write!(s, "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
+            let head = format!(
+                "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\n\
+                 Content-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            let _ = write!(s, "{head}{body}");
         }
     });
     (addr, posts, last)
