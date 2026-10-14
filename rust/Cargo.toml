@@ -1,6 +1,6 @@
 [package]
 name = "gascoigne"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Embed gascoigne token optimization in agent frameworks"
 license = "Apache-2.0"

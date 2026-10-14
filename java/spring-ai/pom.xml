@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>ai.gascoigne</groupId>
   <artifactId>gascoigne-spring-ai</artifactId>
-  <version>0.1.1</version>
+  <version>0.1.2</version>
   <name>gascoigne-spring-ai</name>
   <description>Opt-in gascoigne optimization of every Spring AI tool call</description>
   <url>https://github.com/gascoigne-ai/gascoigne-sdk</url>
@@ -42,7 +42,7 @@
     <dependency>
       <groupId>ai.gascoigne</groupId>
       <artifactId>gascoigne</artifactId>
-      <version>0.1.1</version>
+      <version>0.1.2</version>
     </dependency>
     <dependency>
       <groupId>org.springframework.ai</groupId>

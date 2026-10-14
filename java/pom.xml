@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>ai.gascoigne</groupId>
   <artifactId>gascoigne</artifactId>
-  <version>0.1.1</version>
+  <version>0.1.2</version>
   <name>gascoigne</name>
   <description>Embed gascoigne token optimization in agent frameworks</description>
   <url>https://github.com/gascoigne-ai/gascoigne-sdk</url>

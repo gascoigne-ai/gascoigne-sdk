@@ -1,6 +1,6 @@
 {
   "name": "@gascoigne-ai/sdk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Embed gascoigne token optimization in agent frameworks",
   "license": "Apache-2.0",
   "type": "module",

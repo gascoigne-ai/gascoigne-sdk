@@ -4,7 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <PackageId>Gascoigne.Extensions.AI</PackageId>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <Description>Opt-in gascoigne optimization of every Microsoft.Extensions.AI function call</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/gascoigne-ai/gascoigne-sdk</RepositoryUrl>
