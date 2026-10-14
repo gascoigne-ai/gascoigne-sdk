@@ -52,7 +52,7 @@ In `~/.m2/settings.xml`:
 <dependency>
   <groupId>ai.gascoigne</groupId>
   <artifactId>gascoigne</artifactId>
-  <version>0.1.1</version>
+  <version>0.1.2</version>
 </dependency>
 ```
 

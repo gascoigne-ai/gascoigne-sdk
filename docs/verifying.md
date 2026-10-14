@@ -1,6 +1,6 @@
 # Verifying a release
 
-Releases from `py-v0.1.1` on are signed (Python so far; the others follow with their next version) in two ways, with no key to manage: the signatures are tied
+Every release is signed in two ways, with no key to manage: the signatures are tied
 to the GitHub Actions workflow that built the files, through Sigstore.
 
 1. **Build provenance.** GitHub stores a signed statement of which workflow run, commit and tag
@@ -31,7 +31,7 @@ match it.
 
 ## What is not signed
 
-- Releases before `py-v0.1.1` have checksums only.
+- Go releases carry a signed source archive; `go get` itself is verified by the Go checksum database.
 - The packages on GitHub Packages (npm, Maven, NuGet) are published by the same workflow, but the
   registries do not carry these signatures. Verify the release files, or compare checksums.
 - No GPG signature for Maven Central and no NuGet package signature yet: both need a certificate

@@ -5,12 +5,12 @@ Each ecosystem has its own version and tag prefix. Pushing the tag runs
 
 | Ecosystem | Tag | Artifacts on the GitHub release |
 |---|---|---|
-| Python | `py-v0.1.0` | wheel, sdist, `checksums.txt` |
-| TypeScript | `ts-v0.1.0` | one `.tgz` per package (`@gascoigne-ai/sdk`, `@gascoigne-ai/ai-sdk`) |
-| Go | `go/v0.1.0` | none; the Go module proxy serves the tag |
-| Java | `java-v0.1.0` | `gascoigne` and `gascoigne-spring-ai` jars |
-| .NET | `dotnet-v0.1.0` | `Gascoigne` and `Gascoigne.Extensions.AI` `.nupkg` |
-| Rust | `rust-v0.1.0` | the `.crate` |
+| Python | `py-v0.1.1` | wheel, sdist, `checksums.txt` |
+| TypeScript | `ts-v0.1.2` | one `.tgz` per package (`@gascoigne-ai/sdk`, `@gascoigne-ai/ai-sdk`) |
+| Go | `go/v0.1.1` | a signed source archive; the Go module proxy serves the tag itself |
+| Java | `java-v0.1.2` | `gascoigne` and `gascoigne-spring-ai` jars |
+| .NET | `dotnet-v0.1.2` | `Gascoigne` and `Gascoigne.Extensions.AI` `.nupkg` |
+| Rust | `rust-v0.1.1` | the `.crate` |
 
 ## Steps
 
