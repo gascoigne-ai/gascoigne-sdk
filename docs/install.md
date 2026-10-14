@@ -11,7 +11,7 @@ The SDKs are not on PyPI, npmjs, crates.io or Maven Central yet. Install them fr
 
 | Language | Where it lives | Version tag |
 |---|---|---|
-| Python | release wheel, or the git repo | `py-v0.1.0` |
+| Python | release wheel, or the git repo | `py-v0.1.1` |
 | TypeScript | release tarballs, or GitHub Packages (npm) | `ts-v0.1.1` |
 | Go | the git repo (Go modules) | `go/v0.1.0`, used as `v0.1.0` |
 | Java | GitHub Packages (Maven) | `java-v0.1.1` |
@@ -25,10 +25,10 @@ GitHub Packages is the exception: it asks for a token even for public packages
 ## Python
 
 ```sh
-uv add https://github.com/gascoigne-ai/gascoigne-sdk/releases/download/py-v0.1.0/gascoigne-0.1.0-py3-none-any.whl
+uv add https://github.com/gascoigne-ai/gascoigne-sdk/releases/download/py-v0.1.1/gascoigne-0.1.1-py3-none-any.whl
 
 # or straight from git
-uv add "gascoigne @ git+https://github.com/gascoigne-ai/gascoigne-sdk@py-v0.1.0#subdirectory=python/gascoigne"
+uv add "gascoigne @ git+https://github.com/gascoigne-ai/gascoigne-sdk@py-v0.1.1#subdirectory=python/gascoigne"
 ```
 
 With pip: `pip install <the same wheel URL>`.

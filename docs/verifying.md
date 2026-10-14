@@ -1,6 +1,6 @@
 # Verifying a release
 
-Releases from `py-v0.1.1` on are signed in two ways, with no key to manage: the signatures are tied
+Releases from `py-v0.1.1` on are signed (Python so far; the others follow with their next version) in two ways, with no key to manage: the signatures are tied
 to the GitHub Actions workflow that built the files, through Sigstore.
 
 1. **Build provenance.** GitHub stores a signed statement of which workflow run, commit and tag
