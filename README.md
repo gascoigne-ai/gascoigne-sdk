@@ -5,7 +5,7 @@
 **Your agent framework reads less. Nothing gets lost.**
 
 Drop-in token optimization for tool results, in the languages and frameworks you already use.<br>
-`99% off a noisy log`, `Python | TypeScript | Go | Java | .NET | Rust`, `17 framework demos`
+`99% off a noisy log`, `Python | TypeScript | Go | Java | .NET | Rust`, `15 framework demos`
 
 </div>
 
@@ -65,7 +65,7 @@ cp .env.example .env        # put your OPENROUTER_API_KEY in it (the file is git
 
 | Language | Frameworks | Run |
 |---|---|---|
-| Python | langchain, langgraph, agno, google-adk, openai-agents, crewai, llamaindex, pydantic-ai, smolagents | `cd demos/python && uv run --extra langgraph python langgraph/wrap.py` |
+| Python | langchain, langgraph, agno, google-adk, openai-agents, pydantic-ai, smolagents | `cd demos/python && uv run --extra langgraph python langgraph/wrap.py` |
 | TypeScript | Vercel AI SDK, LangChain.js, OpenAI Agents JS, Mastra | `cd demos/typescript && pnpm install && pnpm ai-sdk:wrap` |
 | Java | Spring AI, LangChain4j | see [`demos/README.md`](demos/README.md) |
 | .NET | Microsoft.Extensions.AI | `cd demos/dotnet && dotnet run --project microsoft-extensions-ai/wrap` |
@@ -96,7 +96,7 @@ endpoint. The proxy forwards to the upstream in the gascoigne config; the demos 
 
 | Language | Proxy demos (`<framework>/proxy`) |
 |---|---|
-| Python | langchain, langgraph, agno, google-adk, openai-agents, crewai, llamaindex, pydantic-ai, smolagents |
+| Python | langchain, langgraph, agno, google-adk, openai-agents, pydantic-ai, smolagents |
 | TypeScript | ai-sdk, langchain, openai-agents, mastra |
 | Java | `spring-ai/proxy` |
 | Go | `langchaingo/proxy` |

@@ -10,5 +10,5 @@ GASCOIGNE_DEMO_DRY=1 uv run --extra agno python agno/wrap.py     # no LLM call
 uv run --extra auto-mcp python langgraph/auto.py
 ```
 
-Extras (one per run, their pins conflict): `langchain langgraph agno adk openai-agents crewai
-llamaindex pydantic-ai smolagents auto-mcp`.
+Extras (one per run, their pins conflict): `langchain langgraph agno adk openai-agents pydantic-ai
+smolagents auto-mcp`.

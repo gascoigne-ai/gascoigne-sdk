@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export GASCOIGNE_DEMO_DRY=1
 
-for demo in langchain langgraph agno google-adk openai-agents crewai llamaindex pydantic-ai smolagents; do
+for demo in langchain langgraph agno google-adk openai-agents pydantic-ai smolagents; do
   echo "-- python / $demo"
   extra=${demo/google-adk/adk}
   (cd demos/python && uv run --extra "$extra" python "$demo/wrap.py" | tail -2)

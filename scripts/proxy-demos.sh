@@ -20,7 +20,7 @@ export GASCOIGNE_CONFIG=$config GASCOIGNE_LEDGER=$ledger GASCOIGNE_SERVER_ADDR=1
 export OPENROUTER_API_KEY=fake OPENROUTER_BASE_URL=http://127.0.0.1:$port/v1
 unset GASCOIGNE_DEMO_DRY
 
-for demo in langchain langgraph agno google-adk openai-agents crewai llamaindex pydantic-ai; do
+for demo in langchain langgraph agno google-adk openai-agents pydantic-ai; do
   echo "-- python / $demo (proxy)"
   extra=${demo/google-adk/adk}
   (cd demos/python && uv run --extra "$extra" python "$demo/proxy.py" | grep -E "search_logs \||Bypassed")

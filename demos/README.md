@@ -13,7 +13,7 @@ demos/
   gascoigne.yaml        # the proxy forwards to OpenRouter
   python/               # uv project; demo_kit/ is the shared helper
     <framework>/{wrap,proxy}.py        langchain langgraph agno google-adk openai-agents
-                                       crewai llamaindex pydantic-ai smolagents
+                                       pydantic-ai smolagents
     langgraph/auto.py                  + mcp_server.py, the MCP server it talks to
   typescript/           # pnpm project; kit.ts is the shared helper
     <framework>/{wrap,proxy}.ts        ai-sdk langchain openai-agents mastra
