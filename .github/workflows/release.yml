@@ -71,7 +71,7 @@ jobs:
     permissions: { contents: read, packages: write }
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with: { node-version: 22, registry-url: "https://npm.pkg.github.com" }
       - run: gh release download "$TAG" --dir dist --pattern '*.tgz'
       - run: for f in dist/*.tgz; do npm publish "./$f"; done
