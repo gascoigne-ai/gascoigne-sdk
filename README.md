@@ -44,10 +44,10 @@ How to install each one, and the minimal code: [`docs/install.md`](docs/install.
 | | Install | Hook |
 |---|---|---|
 | **Python** | [wheel or git](docs/install.md#python) | `gascoigne.wrap_tool(fn)`; for LangChain tools `gascoigne.ext.langchain.optimize_tools(tools)` |
-| **TypeScript** | [GitHub Packages](docs/install.md#typescript) | `wrapTool(fn)`; for Vercel AI SDK `wrapTools(tools)` from `@gascoigne-ai/ai-sdk` |
+| **TypeScript** | [tarballs or GitHub Packages](docs/install.md#typescript) | `wrapTool(fn)`; for Vercel AI SDK `wrapTools(tools)` from `@gascoigne-ai/ai-sdk` |
 | **Go** | `go get github.com/gascoigne-ai/gascoigne-sdk/go@v0.1.0` ([notes](docs/install.md#go)) | `rt.WrapTool(tool)` or `gascoigne.WrapFunc(rt, name, fn)` |
-| **Java** | `ai.gascoigne:gascoigne` on [GitHub Packages](docs/install.md#java) | `g.optimize(text, Attrs.tool(name))` inside Spring AI / LangChain4j tools, or `g.wrapTool(name, fn)` |
-| **.NET** | `Gascoigne` on [GitHub Packages](docs/install.md#net) | `g.WrapTool(name, fn)` for Semantic Kernel and Microsoft.Extensions.AI tools |
+| **Java** | [GitHub Packages](docs/install.md#java) | `g.optimize(text, Attrs.tool(name))` inside Spring AI / LangChain4j tools, or `g.wrapTool(name, fn)` |
+| **.NET** | [nupkg or GitHub Packages](docs/install.md#net) | `g.WrapTool(name, fn)` for Semantic Kernel and Microsoft.Extensions.AI tools |
 | **Rust** | [git tag](docs/install.md#rust) | `rt.wrap_tool(name, fn)` or `rt.optimize(text, &Attrs::tool(..))` |
 
 Every SDK has the same surface: `optimize`, `raw`, `proxy_base_url`, `stats`, `wrap_tool`, and an

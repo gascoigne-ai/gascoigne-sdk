@@ -6,9 +6,10 @@ Every `ts-v*`, `java-v*` and `dotnet-v*` release is also published to GitHub Pac
 workflow's own token. GitHub Packages has no registry for Python, Rust or Go, so those come from the
 GitHub release assets (or PyPI, crates.io and the Go module proxy once published there).
 
-GitHub Packages asks for authentication **even to install public packages**. Create a personal access
-token (classic) with the `read:packages` scope and use it as the password below. In a GitHub Actions
-workflow of this organization, `GITHUB_TOKEN` is enough.
+The repository is public, but GitHub Packages asks for authentication **even to install public
+packages**. Create a personal access token (classic) with only the `read:packages` scope and use it
+as the password below. In a GitHub Actions workflow of this organization, `GITHUB_TOKEN` is enough.
+If you would rather not use a token, the release files in [`install.md`](install.md) need none.
 
 ## npm (`@gascoigne-ai/sdk`, `@gascoigne-ai/ai-sdk`)
 

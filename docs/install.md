@@ -9,30 +9,29 @@ mise use -g go:github.com/gascoigne-ai/gascoigne-cli/cmd/gascoigne
 
 The SDKs are not on PyPI, npmjs, crates.io or Maven Central yet. Install them from GitHub:
 
-| Language | Where it lives | Version tags |
+| Language | Where it lives | Version tag |
 |---|---|---|
-| Python | release assets, or the git repo | `py-v0.1.0` |
-| TypeScript | GitHub Packages (npm), or release tarballs | `ts-v0.1.1` |
+| Python | release wheel, or the git repo | `py-v0.1.0` |
+| TypeScript | release tarballs, or GitHub Packages (npm) | `ts-v0.1.1` |
 | Go | the git repo (Go modules) | `go/v0.1.0`, used as `v0.1.0` |
-| Java | GitHub Packages (Maven), or release jars | `java-v0.1.1` |
-| .NET | GitHub Packages (NuGet), or release `.nupkg` | `dotnet-v0.1.1` |
+| Java | GitHub Packages (Maven) | `java-v0.1.1` |
+| .NET | release `.nupkg`, or GitHub Packages (NuGet) | `dotnet-v0.1.1` |
 | Rust | the git repo | `rust-v0.1.0` |
 
-**Access.** While the repository is private, every command below needs credentials: sign in with
-`gh auth login` (and `gh auth setup-git` so git uses it), or use a personal access token (classic)
-with `repo` and, for GitHub Packages, `read:packages`. Once the repository is public, the git and
-release-asset installs work without any. GitHub Packages asks for a token either way.
+The repository and its releases are public, so the git and release-file installs need no login.
+GitHub Packages is the exception: it asks for a token even for public packages
+([`github-packages.md`](github-packages.md)).
 
 ## Python
 
 ```sh
-# from a release (gh uses your login)
-gh release download py-v0.1.0 -R gascoigne-ai/gascoigne-sdk -p '*.whl'
-uv add ./gascoigne-0.1.0-py3-none-any.whl
+uv add https://github.com/gascoigne-ai/gascoigne-sdk/releases/download/py-v0.1.0/gascoigne-0.1.0-py3-none-any.whl
 
 # or straight from git
 uv add "gascoigne @ git+https://github.com/gascoigne-ai/gascoigne-sdk@py-v0.1.0#subdirectory=python/gascoigne"
 ```
+
+With pip: `pip install <the same wheel URL>`.
 
 ```python
 import gascoigne
@@ -44,14 +43,17 @@ search = gascoigne.wrap_tool(search)      # any tool function returning str
 
 ## TypeScript
 
-```sh
-# GitHub Packages: see github-packages.md for the .npmrc
-npm install @gascoigne-ai/sdk @gascoigne-ai/ai-sdk
+npm does not install remote tarballs by URL, so download both and install the files. They belong
+together: `ai-sdk` depends on `sdk`.
 
-# or a release tarball
-gh release download ts-v0.1.1 -R gascoigne-ai/gascoigne-sdk -p '*.tgz'
-npm install ./gascoigne-ai-sdk-0.1.1.tgz
+```sh
+base=https://github.com/gascoigne-ai/gascoigne-sdk/releases/download/ts-v0.1.1
+curl -sLO $base/gascoigne-ai-sdk-0.1.1.tgz -O $base/gascoigne-ai-ai-sdk-0.1.1.tgz
+npm install ./gascoigne-ai-sdk-0.1.1.tgz ./gascoigne-ai-ai-sdk-0.1.1.tgz
 ```
+
+Or from GitHub Packages (needs a token, see [`github-packages.md`](github-packages.md)):
+`npm install @gascoigne-ai/sdk @gascoigne-ai/ai-sdk`.
 
 ```ts
 import { init, wrapTool } from "@gascoigne-ai/sdk";
@@ -64,9 +66,11 @@ const search = wrapTool(searchFn, "search");
 ## Go
 
 ```sh
-export GOPRIVATE=github.com/gascoigne-ai/*      # only while the repository is private
 go get github.com/gascoigne-ai/gascoigne-sdk/go@v0.1.0
 ```
+
+If `go get` says the module is not found right after a release, the Go module proxy cached an earlier
+miss. Retry in a few minutes, or fetch once without it: `GOPROXY=direct GOSUMDB=off go get ...`.
 
 ```go
 import "github.com/gascoigne-ai/gascoigne-sdk/go/gascoigne"
@@ -101,12 +105,29 @@ String shortText = gascoigne.optimize(toolOutput, Attrs.tool("search"));
 
 ## .NET
 
-NuGet from GitHub Packages, configured as in [`github-packages.md`](github-packages.md):
+Download the two packages from the release into a folder and add it as a NuGet source next to
+nuget.org, in a `nuget.config` beside your project:
 
 ```sh
-dotnet add package Gascoigne
-dotnet add package Gascoigne.Extensions.AI     # Microsoft.Extensions.AI middleware
+base=https://github.com/gascoigne-ai/gascoigne-sdk/releases/download/dotnet-v0.1.1
+mkdir packages && cd packages
+curl -sLO $base/Gascoigne.0.1.1.nupkg -O $base/Gascoigne.Extensions.AI.0.1.1.nupkg
 ```
+
+```xml
+<configuration>
+  <packageSources>
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+    <add key="gascoigne" value="./packages" />
+  </packageSources>
+</configuration>
+```
+
+```sh
+dotnet add package Gascoigne.Extensions.AI --version 0.1.1   # brings in Gascoigne too
+```
+
+Or use GitHub Packages ([`github-packages.md`](github-packages.md)).
 
 ```csharp
 using var gascoigne = new GascoigneClient(new GascoigneOptions { Agent = "my-app" });
@@ -118,7 +139,6 @@ string shortText = await gascoigne.OptimizeAsync(toolOutput, new Attrs { Tool = 
 
 ```sh
 cargo add gascoigne --git https://github.com/gascoigne-ai/gascoigne-sdk --tag rust-v0.1.0
-# while the repository is private: CARGO_NET_GIT_FETCH_WITH_CLI=true so cargo uses git's login
 ```
 
 ```rust
@@ -128,5 +148,5 @@ let short = rt.optimize(&tool_output, &gascoigne::Attrs::tool("search"));
 
 ## Check that it works
 
-Run a demo (`demos/README.md`), or call `optimize` on a long log. With the CLI missing you will see
-one warning, `gascoigne-cli not found on PATH`, and the text comes back unchanged.
+Run a demo ([`demos/README.md`](../demos/README.md)), or call `optimize` on a long log. With the CLI
+missing you see one warning, `gascoigne-cli not found on PATH`, and the text comes back unchanged.
