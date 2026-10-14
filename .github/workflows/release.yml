@@ -2,7 +2,8 @@ name: release
 # Independent versions per ecosystem, chosen by tag prefix:
 #   py-v1.2.3  ts-v1.2.3  go/v1.2.3  java-v1.2.3  dotnet-v1.2.3  rust-v1.2.3
 #
-# Every tag builds its artifacts and attaches them, with checksums, to a GitHub release, and the
+# Every tag builds its artifacts, signs them (docs/verifying.md) and attaches them, with checksums, to a
+# GitHub release, and the
 # npm, Maven and NuGet ones also go to GitHub Packages. Neither needs a secret beyond the workflow's
 # own token. Publishing to the public registries is a further job per ecosystem, switched on by a
 # repository variable (PUBLISH_PYPI, PUBLISH_NPM, PUBLISH_NUGET, PUBLISH_CRATES, PUBLISH_MAVEN = true) and by
@@ -12,6 +13,8 @@ on:
     tags: ["py-v*", "ts-v*", "go/v*", "java-v*", "dotnet-v*", "rust-v*"]
 permissions:
   contents: write
+  id-token: write       # keyless signing
+  attestations: write   # build provenance
 env:
   GH_TOKEN: ${{ github.token }}
   TAG: ${{ github.ref_name }}
@@ -25,7 +28,7 @@ jobs:
       - run: python3 scripts/check_version.py py "${TAG#py-v}"
       - run: mise run py:check
       - run: cd python/gascoigne && uv build --out-dir ../../dist
-      - run: cd dist && sha256sum * > checksums.txt
+      - uses: ./.github/actions/sign
       - run: gh release create "$TAG" dist/* --title "Python SDK ${TAG#py-v}" --generate-notes
   publish-pypi:
     needs: python
@@ -48,7 +51,7 @@ jobs:
       - run: python3 scripts/check_version.py ts "${TAG#ts-v}"
       - run: mise run ts:check
       - run: cd typescript && pnpm -r --filter "./packages/*" exec pnpm pack --pack-destination "$GITHUB_WORKSPACE/dist"
-      - run: cd dist && sha256sum * > checksums.txt
+      - uses: ./.github/actions/sign
       - run: gh release create "$TAG" dist/* --title "TypeScript SDK ${TAG#ts-v}" --generate-notes
   publish-npm:
     needs: typescript
@@ -94,7 +97,7 @@ jobs:
       - run: python3 scripts/check_version.py java "${TAG#java-v}"
       - run: mise run java:check
       - run: mkdir dist && cp java/target/gascoigne-*.jar java/spring-ai/target/gascoigne-spring-ai-*.jar dist/
-      - run: cd dist && sha256sum * > checksums.txt
+      - uses: ./.github/actions/sign
       - run: gh release create "$TAG" dist/* --title "Java SDK ${TAG#java-v}" --generate-notes
   packages-maven:
     needs: java
@@ -133,7 +136,7 @@ jobs:
       - run: python3 scripts/check_version.py dotnet "${TAG#dotnet-v}"
       - run: mise run dotnet:check
       - run: cd dotnet && dotnet pack src/Gascoigne -c Release -o ../dist && dotnet pack src/Gascoigne.Extensions.AI -c Release -o ../dist
-      - run: cd dist && sha256sum * > checksums.txt
+      - uses: ./.github/actions/sign
       - run: gh release create "$TAG" dist/* --title ".NET SDK ${TAG#dotnet-v}" --generate-notes
   packages-nuget:
     needs: dotnet
@@ -164,7 +167,7 @@ jobs:
       - run: python3 scripts/check_version.py rust "${TAG#rust-v}"
       - run: mise run rust:check
       - run: cd rust && cargo package && mkdir -p ../dist && cp target/package/*.crate ../dist/
-      - run: cd dist && sha256sum * > checksums.txt
+      - uses: ./.github/actions/sign
       - run: gh release create "$TAG" dist/* --title "Rust SDK ${TAG#rust-v}" --generate-notes
   publish-crates:
     needs: rust

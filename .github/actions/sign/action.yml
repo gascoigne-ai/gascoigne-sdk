@@ -1,0 +1,15 @@
+name: sign
+description: Checksums, a build provenance attestation and a keyless cosign signature for dist/*
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: cd dist && sha256sum -- * > checksums.txt
+    # GitHub records which workflow run built each file. Verify with: gh attestation verify
+    - uses: actions/attest-build-provenance@v3
+      with:
+        subject-path: dist/*
+    # A Sigstore signature over the checksums, tied to this workflow's identity (no key to keep).
+    - uses: sigstore/cosign-installer@v3
+    - shell: bash
+      run: cd dist && cosign sign-blob --yes --bundle checksums.txt.sigstore.json checksums.txt

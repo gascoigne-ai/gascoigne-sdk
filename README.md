@@ -153,7 +153,8 @@ mise run check      # lint + tests for all six SDKs
 mise run e2e        # against a real binary: GASCOIGNE_BIN=../gascoigne-cli/bin/gascoigne
 ```
 
-Releases and registry credentials: [`docs/releasing.md`](docs/releasing.md). npm, Maven and NuGet
+Releases and registry credentials: [`docs/releasing.md`](docs/releasing.md); verifying a download:
+[`docs/verifying.md`](docs/verifying.md). npm, Maven and NuGet
 packages are on GitHub Packages: [`docs/github-packages.md`](docs/github-packages.md). Install
 guide: [`docs/install.md`](docs/install.md). Rules for contributors:
 [`.harness/rules.md`](.harness/rules.md).
