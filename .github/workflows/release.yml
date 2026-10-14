@@ -85,8 +85,13 @@ jobs:
       - uses: jdx/mise-action@v2
       - run: python3 scripts/check_version.py go "${TAG#go/v}"
       - run: mise run go:check
-      # The Go module proxy serves the tag itself; the release only announces it.
-      - run: gh release create "$TAG" --title "Go SDK ${TAG#go/v}" --generate-notes
+      # The Go module proxy serves the tag itself; the release adds a signed source archive.
+      - run: |
+          mkdir dist
+          git archive --format=tar.gz --prefix="gascoigne-sdk-go-${TAG#go/v}/" \
+            -o "dist/gascoigne-sdk-go-${TAG#go/v}.tar.gz" "HEAD:go"
+      - uses: ./.github/actions/sign
+      - run: gh release create "$TAG" dist/* --title "Go SDK ${TAG#go/v}" --generate-notes
 
   java:
     if: startsWith(github.ref_name, 'java-v')
