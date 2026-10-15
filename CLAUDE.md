@@ -8,6 +8,8 @@ SDKs that embed gascoigne-cli token optimization into agent frameworks. Contract
 - `mise run e2e` - against a real binary (`GASCOIGNE_BIN=...`)
 - demos: `demos/python`, see README
 
+Shared with the other gascoigne repos: submodule `.harness/common` (`git submodule update --init` in a new worktree).
+@.harness/common/rules.md
+@.harness/common/commit-style.md
 @.harness/rules.md
 @.harness/code-style.md
-@.harness/commit-style.md

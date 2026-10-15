@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checks commit subjects against .harness/commit-style.md.
+"""Checks commit subjects against .harness/common/commit-style.md.
 
 Usage: scripts/commit_style.py [range]   (default: origin/master..HEAD)
 """
