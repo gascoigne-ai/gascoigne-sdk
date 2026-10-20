@@ -17,7 +17,7 @@ dev = [
   "ruff>=0.8",
   "pyright>=1.1.400",
   "mcp>=1.2",
-  "langchain-core>=0.3",
+  "langchain-core>=1.6.12",
 ]
 
 [tool.ruff]
