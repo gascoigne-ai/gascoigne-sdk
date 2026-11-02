@@ -78,9 +78,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # mise run builds libgascoigne from the CLI engine facade, as in ci.yml.
+      - uses: actions/checkout@v4
+        with: { repository: gascoigne-ai/gascoigne-cli, path: cli }
       - uses: jdx/mise-action@v2
       - run: python3 scripts/check_version.py py "${TAG#py-v}"
       - run: mise run py:check
+        env: { GASCOIGNE_CLI_DIR: "${{ github.workspace }}/cli" }
       - run: cd python/gascoigne && uv build --out-dir ../../dist
       - uses: ./.github/actions/sign
       - run: gh release create "$TAG" dist/* --title "Python SDK ${TAG#py-v}" --generate-notes
@@ -101,9 +105,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # mise run builds libgascoigne from the CLI engine facade, as in ci.yml.
+      - uses: actions/checkout@v4
+        with: { repository: gascoigne-ai/gascoigne-cli, path: cli }
       - uses: jdx/mise-action@v2
       - run: python3 scripts/check_version.py ts "${TAG#ts-v}"
       - run: mise run ts:check
+        env: { GASCOIGNE_CLI_DIR: "${{ github.workspace }}/cli" }
       - run: cd typescript && pnpm -r --filter "./packages/*" exec pnpm pack --pack-destination "$GITHUB_WORKSPACE/dist"
       - uses: ./.github/actions/sign
       - run: gh release create "$TAG" dist/* --title "TypeScript SDK ${TAG#ts-v}" --generate-notes
@@ -136,9 +144,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # mise run builds libgascoigne from the CLI engine facade, as in ci.yml.
+      - uses: actions/checkout@v4
+        with: { repository: gascoigne-ai/gascoigne-cli, path: cli }
       - uses: jdx/mise-action@v2
       - run: python3 scripts/check_version.py go "${TAG#go/v}"
       - run: mise run go:check
+        env: { GASCOIGNE_CLI_DIR: "${{ github.workspace }}/cli" }
       # The Go module proxy serves the tag itself; the release adds a signed source archive.
       - run: |
           mkdir dist
@@ -152,9 +164,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # mise run builds libgascoigne from the CLI engine facade, as in ci.yml.
+      - uses: actions/checkout@v4
+        with: { repository: gascoigne-ai/gascoigne-cli, path: cli }
       - uses: jdx/mise-action@v2
       - run: python3 scripts/check_version.py java "${TAG#java-v}"
       - run: mise run java:check
+        env: { GASCOIGNE_CLI_DIR: "${{ github.workspace }}/cli" }
       - run: mkdir dist && cp java/target/gascoigne-*.jar java/spring-ai/target/gascoigne-spring-ai-*.jar dist/
       - uses: ./.github/actions/sign
       - run: gh release create "$TAG" dist/* --title "Java SDK ${TAG#java-v}" --generate-notes
@@ -191,9 +207,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # mise run builds libgascoigne from the CLI engine facade, as in ci.yml.
+      - uses: actions/checkout@v4
+        with: { repository: gascoigne-ai/gascoigne-cli, path: cli }
       - uses: jdx/mise-action@v2
       - run: python3 scripts/check_version.py dotnet "${TAG#dotnet-v}"
       - run: mise run dotnet:check
+        env: { GASCOIGNE_CLI_DIR: "${{ github.workspace }}/cli" }
       - run: cd dotnet && dotnet pack src/Gascoigne -c Release -o ../dist && dotnet pack src/Gascoigne.Extensions.AI -c Release -o ../dist
       - uses: ./.github/actions/sign
       - run: gh release create "$TAG" dist/* --title ".NET SDK ${TAG#dotnet-v}" --generate-notes
@@ -222,9 +242,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # mise run builds libgascoigne from the CLI engine facade, as in ci.yml.
+      - uses: actions/checkout@v4
+        with: { repository: gascoigne-ai/gascoigne-cli, path: cli }
       - uses: jdx/mise-action@v2
       - run: python3 scripts/check_version.py rust "${TAG#rust-v}"
       - run: mise run rust:check
+        env: { GASCOIGNE_CLI_DIR: "${{ github.workspace }}/cli" }
       - run: cd rust && cargo package && mkdir -p ../dist && cp target/package/*.crate ../dist/
       - uses: ./.github/actions/sign
       - run: gh release create "$TAG" dist/* --title "Rust SDK ${TAG#rust-v}" --generate-notes
