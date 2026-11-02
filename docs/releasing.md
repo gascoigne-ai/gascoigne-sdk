@@ -6,13 +6,13 @@ Since 0.9.0 every ecosystem and the native library carry the version of the CLI 
 
 | Ecosystem | Tag | Artifacts on the GitHub release |
 |---|---|---|
-| Python | `py-v0.1.1` | wheel, sdist, `checksums.txt` |
-| TypeScript | `ts-v0.1.2` | one `.tgz` per package (`@gascoigne-ai/sdk`, `@gascoigne-ai/ai-sdk`) |
-| Go | `go/v0.1.1` | a signed source archive; the Go module proxy serves the tag itself |
-| Java | `java-v0.1.2` | `gascoigne` and `gascoigne-spring-ai` jars |
-| .NET | `dotnet-v0.1.2` | `Gascoigne` and `Gascoigne.Extensions.AI` `.nupkg` |
-| Rust | `rust-v0.1.1` | the `.crate` |
-| Native library | `native-v0.1.0` | `libgascoigne-<version>-<os>-<arch>.tar.gz` per platform, and the per-platform packages of every language |
+| Python | `py-v0.9.1` | wheel, sdist, `checksums.txt` |
+| TypeScript | `ts-v0.9.1` | one `.tgz` per package (`@gascoigne-ai/sdk`, `@gascoigne-ai/ai-sdk`) |
+| Go | `go/v0.9.1` | a signed source archive; the Go module proxy serves the tag itself |
+| Java | `java-v0.9.1` | `gascoigne` and `gascoigne-spring-ai` jars |
+| .NET | `dotnet-v0.9.1` | `Gascoigne` and `Gascoigne.Extensions.AI` `.nupkg` |
+| Rust | `rust-v0.9.1` | the `.crate` |
+| Native library | `native-v0.9.1` | `libgascoigne-<version>-<os>-<arch>.tar.gz` per platform, and the per-platform packages of every language |
 
 The native release builds the library on every platform, attaches it, and builds the per-platform
 packages of every language with `scripts/package_native.py` (a wheel, an npm package, a Java

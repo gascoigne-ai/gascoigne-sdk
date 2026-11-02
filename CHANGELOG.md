@@ -7,6 +7,21 @@ SDKs they touch.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-02
+
+Version bump to match CLI 0.9.1, plus native demos for every framework and a README that leads with a try-it. The
+0.9.0 tags did not start the release workflow (more than three tags in one push), so 0.9.1 is the first release of
+the 0.9 line.
+
+### Added
+
+- Native demos for every Python and TypeScript framework and for Spring AI (`demos/<language>/<framework>/native`).
+
+### Changed
+
+- README: a 30 second try-it that needs no API key, a real before/after, native or proxy side by side.
+- Install, release and verifying guides name the 0.9.1 tags.
+
 ## [0.9.0] - 2026-11-02
 
 Native mode: every SDK can run the engine inside the application process instead of talking to a `gascoigne`
