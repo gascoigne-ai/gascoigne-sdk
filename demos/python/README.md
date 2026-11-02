@@ -1,8 +1,8 @@
 # Python demos
 
-See [`../README.md`](../README.md) for the layout. Here, each framework folder holds `wrap.py` and
-`proxy.py`; `langgraph/` also has `auto.py` (an MCP server decorated by one explicit
-`gascoigne.auto()` call). Shared code is in `demo_kit/`.
+See [`../README.md`](../README.md) for the layout. Here, each framework folder holds `wrap.py`,
+`proxy.py` and `native.py` (the engine runs in the process, set `GASCOIGNE_LIB`); `langgraph/`
+also has `auto.py` (an MCP server decorated by one explicit `gascoigne.auto()` call). Shared code is in `demo_kit/`.
 
 ```sh
 uv run --extra langgraph python langgraph/wrap.py

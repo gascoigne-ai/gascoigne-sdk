@@ -13,6 +13,7 @@
     <module>spring-ai/wrap</module>
     <module>spring-ai/proxy</module>
     <module>spring-ai/auto</module>
+    <module>spring-ai/native</module>
     <module>langchain4j/wrap</module>
     <module>langchain4j/native</module>
   </modules>

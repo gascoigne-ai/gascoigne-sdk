@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs every wrapping demo in dry mode (the agent is built, the LLM is not called).
-# Layout: demos/<language>/<framework>/<mode>, with mode = wrap | proxy | auto.
+# Layout: demos/<language>/<framework>/<mode>, with mode = wrap | proxy | auto | native.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export GASCOIGNE_DEMO_DRY=1
@@ -29,14 +29,21 @@ echo "-- rust / plain"
 # (`mise run native:build`, or GASCOIGNE_LIB).
 export GASCOIGNE_LIB="${GASCOIGNE_LIB:-$PWD/native/dist/libgascoigne.so}"
 if [ -f "$GASCOIGNE_LIB" ]; then
-  echo "-- native / python langgraph"
-  (cd demos/python && uv run --extra langgraph python langgraph/native.py | tail -2)
-  echo "-- native / typescript ai-sdk"
-  (cd demos/typescript && pnpm -s ai-sdk:native | tail -2)
+  for demo in langchain langgraph agno google-adk openai-agents pydantic-ai smolagents; do
+    echo "-- native / python $demo"
+    extra=${demo/google-adk/adk}
+    (cd demos/python && uv run --extra "$extra" python "$demo/native.py" | tail -2)
+  done
+  for demo in ai-sdk langchain openai-agents mastra; do
+    echo "-- native / typescript $demo"
+    (cd demos/typescript && pnpm -s "$demo:native" | tail -2)
+  done
   echo "-- native / java langchain4j"
   (cd demos/java && mvn -q -B -pl langchain4j/native exec:java | tail -2)
   echo "-- native / dotnet microsoft-extensions-ai"
   (cd demos/dotnet && dotnet run --project microsoft-extensions-ai/native | tail -2)
+  echo "-- native / java spring-ai"
+  (cd demos/java && java -jar spring-ai/native/target/demo-spring-ai-native-0.0.0.jar | tail -2)
   echo "-- native / go plain"
   (cd native && go run ./examples/plain | tail -2)
   echo "-- native / rust plain"

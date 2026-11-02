@@ -42,8 +42,8 @@ Applies to every language in this repo. Readability first: if a reader has to pa
 - Do not swallow errors silently elsewhere; wrap with context.
 
 ## Demos
-- **One tree: `demos/<language>/<framework>/<mode>`**, mode being `wrap`, `proxy` or `auto`. Framework
-  folders use the framework's usual name, the same in every language. Shared helpers sit in the
+- **One tree: `demos/<language>/<framework>/<mode>`**, mode being `wrap`, `proxy`, `auto` or
+  `native`. Framework folders use the framework's usual name, the same in every language. Shared helpers sit in the
   language's `kit` (`demo_kit/`, `kit.ts`, `kit/`), never inside a demo.
 - **Plain ASCII in source and output.** No emojis, arrows, box-drawing characters, ANSI colors or
   typographic punctuation: demos are read by people, in any terminal or editor. Write `->`,

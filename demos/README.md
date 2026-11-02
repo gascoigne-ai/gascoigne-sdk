@@ -13,17 +13,17 @@ One tree, one convention: `demos/<language>/<framework>/<mode>`.
 demos/
   gascoigne.yaml        # the proxy forwards to OpenRouter
   python/               # uv project; demo_kit/ is the shared helper
-    <framework>/{wrap,proxy}.py        langchain langgraph agno google-adk openai-agents
+    <framework>/{wrap,proxy,native}.py langchain langgraph agno google-adk openai-agents
                                        pydantic-ai smolagents
     langgraph/auto.py                  + mcp_server.py, the MCP server it talks to
   typescript/           # pnpm project; kit.ts is the shared helper
-    <framework>/{wrap,proxy}.ts        ai-sdk langchain openai-agents mastra
+    <framework>/{wrap,proxy,native}.ts ai-sdk langchain openai-agents mastra
   java/                 # Maven reactor; kit/ is the shared helper
-    spring-ai/{wrap,proxy,auto}        langchain4j/wrap
+    spring-ai/{wrap,proxy,auto,native} langchain4j/{wrap,native}
   go/                   # Go module; kit/ is the shared helper
     langchaingo/{wrap,proxy}
   dotnet/               # kit/ is the shared helper
-    microsoft-extensions-ai/{wrap,auto}
+    microsoft-extensions-ai/{wrap,auto,native}
   rust/plain/{wrap,native}.rs    # no framework, no LLM
 ```
 

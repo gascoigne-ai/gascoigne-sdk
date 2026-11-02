@@ -9,10 +9,13 @@
     "ai-sdk:native": "tsx ai-sdk/native.ts",
     "ai-sdk:proxy": "tsx ai-sdk/proxy.ts",
     "langchain:wrap": "tsx langchain/wrap.ts",
+    "langchain:native": "tsx langchain/native.ts",
     "langchain:proxy": "tsx langchain/proxy.ts",
     "openai-agents:wrap": "tsx openai-agents/wrap.ts",
+    "openai-agents:native": "tsx openai-agents/native.ts",
     "openai-agents:proxy": "tsx openai-agents/proxy.ts",
     "mastra:wrap": "tsx mastra/wrap.ts",
+    "mastra:native": "tsx mastra/native.ts",
     "mastra:proxy": "tsx mastra/proxy.ts"
   },
   "dependencies": {
