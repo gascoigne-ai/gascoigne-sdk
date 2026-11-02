@@ -26,5 +26,16 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
+  },
+  "devDependencies": {
+    "koffi": "^3.3.6"
+  },
+  "peerDependencies": {
+    "koffi": ">=3"
+  },
+  "peerDependenciesMeta": {
+    "koffi": {
+      "optional": true
+    }
   }
 }

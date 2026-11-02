@@ -7,6 +7,9 @@
 import { spawn } from "node:child_process";
 import { accessSync, constants } from "node:fs";
 import { delimiter, join } from "node:path";
+import { Native, type Settings } from "./native.js";
+
+export { NativeError, type Settings } from "./native.js";
 
 const PROTO = 1;
 const DEFAULT_ADDR = "127.0.0.1:7878";
@@ -60,6 +63,14 @@ export interface Options {
   onResult?: (original: string, result: Result) => void;
   /** Where warnings go, default console.warn. */
   warn?: (msg: string) => void;
+  /**
+   * "native" runs the engine in this process through libgascoigne (needs koffi) and throws
+   * NativeError when no library is found; "proxy" talks to the gascoigne server.
+   * Default `$GASCOIGNE_MODE`, else "proxy". See spec/native.md.
+   */
+  mode?: "proxy" | "native";
+  /** Configuration for the embedded engine, merged by the library. */
+  settings?: Settings;
 }
 
 function findOnPath(name: string): string | undefined {
@@ -96,8 +107,12 @@ export class Runtime {
   private pausedUntil = 0;
   private warned = false;
   private total: Stats = { rawTokens: 0, outTokens: 0 };
+  private native?: Native;
 
-  constructor(private readonly opts: Options = {}) {}
+  /** Throws NativeError in native mode when no library can be found or loaded. */
+  constructor(private readonly opts: Options = {}) {
+    if (this.mode() === "native") this.native = Native.open(opts.settings ?? {});
+  }
 
   get agent(): string {
     return this.opts.agent ?? "";
@@ -178,12 +193,25 @@ export class Runtime {
     return false;
   }
 
+  private mode(): string {
+    return this.opts.mode ?? (process.env.GASCOIGNE_MODE || "proxy");
+  }
+
+  /** Release the embedded engine, if any. */
+  close(): void {
+    this.native?.close();
+    this.native = undefined;
+    this.state = "bypass";
+  }
+
   /** True when optimize calls will be tried. Probes once, then remembers. */
   async ready(): Promise<boolean> {
     if (this.disabled()) return false;
     if (this.state === "unknown") {
       this.probing ??= (async () => {
-        this.state = (await this.healthy()) || (await this.startServer()) ? "ready" : "bypass";
+        const up =
+          this.native !== undefined || (await this.healthy()) || (await this.startServer());
+        this.state = up ? "ready" : "bypass";
       })();
       await this.probing;
     }
@@ -207,15 +235,11 @@ export class Runtime {
       ...attrs,
     };
     try {
-      const r = await fetch(`${this.baseUrl}/sdk/v1/optimize`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        // undefined fields are not serialized
-        body: JSON.stringify(request),
-        signal: AbortSignal.timeout(this.opts.timeoutMs ?? 5000),
-      });
-      if (!r.ok) throw new Error(`status ${r.status}`);
-      const out = toResult((await r.json()) as OptimizeResponse);
+      // undefined fields are not serialized
+      const body = JSON.stringify(request);
+      const out = this.native
+        ? toResult(JSON.parse(await this.native.optimize(body)) as OptimizeResponse)
+        : await this.post(body);
       this.failures = 0;
       this.total = {
         rawTokens: this.total.rawTokens + out.rawTokens,
@@ -227,6 +251,17 @@ export class Runtime {
       this.failed();
       return same;
     }
+  }
+
+  private async post(body: string): Promise<Result> {
+    const r = await fetch(`${this.baseUrl}/sdk/v1/optimize`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+      signal: AbortSignal.timeout(this.opts.timeoutMs ?? 5000),
+    });
+    if (!r.ok) throw new Error(`status ${r.status}`);
+    return toResult((await r.json()) as OptimizeResponse);
   }
 
   private notify(original: string, result: Result): void {
@@ -245,6 +280,7 @@ export class Runtime {
   async raw(rawId: string): Promise<string> {
     if (!(await this.ready())) return "";
     try {
+      if (this.native) return await this.native.raw(rawId);
       const r = await fetch(`${this.baseUrl}/sdk/v1/raw/${encodeURIComponent(rawId)}`, {
         signal: AbortSignal.timeout(this.opts.timeoutMs ?? 5000),
       });
@@ -259,7 +295,8 @@ export class Runtime {
   async proxyBaseUrl(
     api: "openai" | "anthropic" | "gemini" = "openai",
   ): Promise<string | undefined> {
-    if (!(await this.ready())) return undefined;
+    // The embedded engine has no listening proxy.
+    if (!(await this.ready()) || this.native) return undefined;
     return api === "openai" ? `${this.baseUrl}/v1` : this.baseUrl;
   }
 
