@@ -6,6 +6,7 @@ unchanged and nothing is raised.
 
 from gascoigne.auto import AutoHandle, auto
 from gascoigne.models import OptimizeRequest, Result, Stats
+from gascoigne.native import Settings
 from gascoigne.runtime import (
     Runtime,
     default,
@@ -26,6 +27,7 @@ __all__ = [
     "Result",
     "Stats",
     "Runtime",
+    "Settings",
     "default",
     "init",
     "optimize",

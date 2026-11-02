@@ -4,10 +4,11 @@ version = "0.0.0"
 requires-python = ">=3.10"
 
 [tool.uv.workspace]
-members = ["gascoigne", "integrations/*"]
+members = ["gascoigne", "gascoigne-native", "integrations/*"]
 
 [tool.uv.sources]
 gascoigne = { workspace = true }
+gascoigne-native = { workspace = true }
 
 [dependency-groups]
 dev = [

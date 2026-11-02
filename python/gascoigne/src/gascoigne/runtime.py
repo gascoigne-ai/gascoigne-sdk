@@ -17,6 +17,7 @@ from typing import Any, TypeVar, cast
 import httpx
 
 from gascoigne.models import OptimizeRequest, Result, Stats
+from gascoigne.native import Native, NativeError, Settings
 from gascoigne.retrieve import select
 
 log = logging.getLogger("gascoigne")
@@ -26,6 +27,7 @@ DEFAULT_ADDR = "127.0.0.1:7878"
 INSTALL_HINT = "mise use -g go:github.com/gascoigne-ai/gascoigne-cli/cmd/gascoigne"
 BREAKER_FAILURES = 5
 BREAKER_PAUSE = 60.0
+MODES = ("proxy", "native")
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -40,7 +42,15 @@ class Runtime:
         session: str = "",
         timeout: float = 5.0,
         on_result: Callable[[str, Result], None] | None = None,
+        mode: str = "",
+        settings: Settings | None = None,
     ) -> None:
+        # "native" runs the engine in this process through libgascoigne and raises NativeError
+        # here when the library cannot be found or loaded; "proxy" talks to the gascoigne server.
+        # Empty means $GASCOIGNE_MODE, else proxy.
+        self.mode = mode or os.environ.get("GASCOIGNE_MODE", "") or "proxy"
+        self.settings = settings or Settings()
+        self._native: Native | None = Native(self.settings) if self.mode == "native" else None
         self.agent = agent
         self.session = session
         self.timeout = timeout
@@ -120,8 +130,18 @@ class Runtime:
             return False
         with self._lock:
             if self._available is None:
-                self._available = self._healthy() or self._start_server()
+                if self._native is not None:
+                    self._available = True
+                else:
+                    self._available = self._healthy() or self._start_server()
             return self._available and time.monotonic() >= self._paused_until
+
+    def close(self) -> None:
+        """Release the embedded engine, if any."""
+        if self._native:
+            self._native.close()
+            self._native = None
+            self._available = False
 
     def _failed(self, why: object) -> None:
         log.debug("gascoigne optimize failed: %s", why)
@@ -149,10 +169,13 @@ class Runtime:
             text, self.agent, self.session, tool=tool, cmd=cmd, url=url, query=query, model=model
         )
         try:
-            response = self._http().post("/sdk/v1/optimize", json=request.to_json())
-            response.raise_for_status()
-            out = Result.from_json(response.json())
-        except (httpx.HTTPError, ValueError, KeyError, TypeError) as e:
+            if self._native:
+                out = self._native.optimize(request)
+            else:
+                response = self._http().post("/sdk/v1/optimize", json=request.to_json())
+                response.raise_for_status()
+                out = Result.from_json(response.json())
+        except (httpx.HTTPError, NativeError, ValueError, KeyError, TypeError) as e:
             self._failed(e)
             return Result(text)
         with self._lock:
@@ -186,10 +209,12 @@ class Runtime:
         if not self.ready():
             return ""
         try:
+            if self._native:
+                return self._native.raw(raw_id)
             r = self._http().get(f"/sdk/v1/raw/{raw_id}")
             r.raise_for_status()
             return r.text
-        except httpx.HTTPError as e:
+        except (httpx.HTTPError, NativeError) as e:
             self._failed(e)
             return ""
 
@@ -211,7 +236,8 @@ class Runtime:
 
         ``api`` is "openai" (``/v1``), "anthropic" (no suffix) or "gemini" (no suffix).
         """
-        if not self.ready():
+        # The embedded engine has no listening proxy.
+        if not self.ready() or self._native:
             return None
         return f"{self.base_url}/v1" if api == "openai" else self.base_url
 
@@ -235,10 +261,14 @@ class Runtime:
         return cast(F, wrapper)
 
 
-_default = Runtime()
+_default: Runtime | None = None
 
 
 def default() -> Runtime:
+    """The process-wide runtime, created on first use."""
+    global _default
+    if _default is None:
+        _default = Runtime()
     return _default
 
 
@@ -248,31 +278,44 @@ def init(
     session: str = "",
     timeout: float = 5.0,
     on_result: Callable[[str, Result], None] | None = None,
+    mode: str = "",
+    settings: Settings | None = None,
 ) -> Runtime:
-    """Configure the process-wide runtime and return it."""
+    """Configure the process-wide runtime and return it.
+
+    ``mode`` is "proxy" or "native" (see spec/native.md); ``settings`` is merged by the library.
+    Native mode raises `NativeError` here when no library is found.
+    """
     global _default
-    _default = Runtime(agent=agent, session=session, timeout=timeout, on_result=on_result)
+    _default = Runtime(
+        agent=agent,
+        session=session,
+        timeout=timeout,
+        on_result=on_result,
+        mode=mode,
+        settings=settings,
+    )
     return _default
 
 
 def optimize(text: str, **attrs: str) -> str:
-    return _default.optimize(text, **attrs)
+    return default().optimize(text, **attrs)
 
 
 def raw(raw_id: str) -> str:
-    return _default.raw(raw_id)
+    return default().raw(raw_id)
 
 
 def proxy_base_url(api: str = "openai") -> str | None:
-    return _default.proxy_base_url(api)
+    return default().proxy_base_url(api)
 
 
 def wrap_tool(fn: F, *, name: str = "") -> F:
-    return _default.wrap_tool(fn, name=name)
+    return default().wrap_tool(fn, name=name)
 
 
 def stats() -> Stats:
-    return _default.stats()
+    return default().stats()
 
 
 def retrieve_original(raw_id: str, grep: str = "", lines: str = "") -> str:
@@ -280,4 +323,4 @@ def retrieve_original(raw_id: str, grep: str = "", lines: str = "") -> str:
 
     Use ``grep`` (a regex) or ``lines`` (for example "10-40") to ask for just the part you need.
     """
-    return _default.retrieve(raw_id, grep, lines)
+    return default().retrieve(raw_id, grep, lines)

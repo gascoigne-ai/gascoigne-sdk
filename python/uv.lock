@@ -11,6 +11,7 @@ resolution-markers = [
 [manifest]
 members = [
     "gascoigne",
+    "gascoigne-native",
     "gascoigne-workspace",
 ]
 
@@ -456,6 +457,17 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "httpx", specifier = ">=0.27" }]
+
+[[package]]
+name = "gascoigne-native"
+version = "0.1.0"
+source = { editable = "gascoigne-native" }
+dependencies = [
+    { name = "gascoigne" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "gascoigne", editable = "gascoigne" }]
 
 [[package]]
 name = "gascoigne-workspace"
