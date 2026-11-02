@@ -10,7 +10,7 @@ name: release
 # the secrets in docs/releasing.md.
 on:
   push:
-    tags: ["py-v*", "ts-v*", "go/v*", "java-v*", "dotnet-v*", "rust-v*"]
+    tags: ["py-v*", "ts-v*", "go/v*", "java-v*", "dotnet-v*", "rust-v*", "native-v*"]
 permissions:
   contents: write
   id-token: write       # keyless signing
@@ -19,6 +19,60 @@ env:
   GH_TOKEN: ${{ github.token }}
   TAG: ${{ github.ref_name }}
 jobs:
+  # The native variant of every SDK loads this library (spec/native.md). cgo cannot cross-compile
+  # between operating systems here, so each platform builds on its own runner.
+  native-build:
+    if: startsWith(github.ref_name, 'native-v')
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-latest, name: linux-amd64, file: libgascoigne.so }
+          - { os: ubuntu-24.04-arm, name: linux-arm64, file: libgascoigne.so }
+          - { os: macos-13, name: darwin-amd64, file: libgascoigne.dylib }
+          - { os: macos-14, name: darwin-arm64, file: libgascoigne.dylib }
+          - { os: windows-latest, name: windows-amd64, file: gascoigne.dll }
+    runs-on: ${{ matrix.os }}
+    defaults: { run: { shell: bash } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: { repository: gascoigne-ai/gascoigne-cli, path: cli }
+      - uses: actions/setup-go@v5
+        with: { go-version-file: native/go.mod }
+      - run: python3 scripts/check_version.py native "${TAG#native-v}"
+      - run: |
+          cd native
+          go mod edit -replace "github.com/gascoigne-ai/gascoigne-cli=$GITHUB_WORKSPACE/cli"
+          go test ./...
+          go build -trimpath -ldflags "-s -w" -buildmode=c-shared -o "dist/${{ matrix.file }}" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.name }}
+          path: |
+            native/dist/${{ matrix.file }}
+            native/dist/libgascoigne.h
+  native:
+    needs: native-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - uses: actions/download-artifact@v4
+        with: { path: parts }
+      # One archive per platform, named for the platform, each with the library and the header.
+      - run: |
+          mkdir dist
+          for d in parts/native-*; do
+            name="${d#parts/native-}"
+            tar -czf "dist/libgascoigne-${TAG#native-v}-$name.tar.gz" -C "$d" .
+            mkdir -p "libs/$name" && cp "$d"/* "libs/$name/"
+          done
+      # One package per platform in every language, so an application fetches one library
+      # (about 9 MB), not all of them. The Rust crates need the `gascoigne` crate published first.
+      - run: python3 scripts/package_native.py libs dist
+      - uses: ./.github/actions/sign
+      - run: gh release create "$TAG" dist/* --title "Native library ${TAG#native-v}" --generate-notes
+
   python:
     if: startsWith(github.ref_name, 'py-v')
     runs-on: ubuntu-latest

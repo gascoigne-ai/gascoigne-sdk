@@ -9,3 +9,9 @@ target/
 bin/
 obj/
 .env
+native/dist/
+python/gascoigne-native/src/gascoigne_native/lib/
+typescript/native-template/lib/
+java/native/src/main/resources/gascoigne/native/
+dotnet/src/Gascoigne.Native/lib/
+rust/native/lib/

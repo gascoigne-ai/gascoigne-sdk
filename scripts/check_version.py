@@ -2,7 +2,7 @@
 """Fails when a release tag does not match the version in the package files.
 
 Usage: scripts/check_version.py <ecosystem> <version>
-Ecosystems: py ts go java dotnet rust. Go has no version file: the tag is the version.
+Ecosystems: py ts go java dotnet rust native. Go has no version file: the tag is the version.
 """
 
 import json
@@ -43,7 +43,29 @@ def rust() -> list[str]:
     return [tomllib.loads(Path("rust/Cargo.toml").read_text())["package"]["version"]]
 
 
-VERSIONS = {"py": python, "ts": typescript, "java": java, "dotnet": dotnet, "rust": rust}
+def native() -> list[str]:
+    """The library version and the version of every package that bundles it must agree."""
+    pom = Path("java/native/pom.xml").read_text()
+    csproj = Path("dotnet/src/Gascoigne.Native/Gascoigne.Native.csproj").read_text()
+    return [
+        Path("native/VERSION").read_text().strip(),
+        tomllib.loads(Path("python/gascoigne-native/pyproject.toml").read_text())["project"][
+            "version"
+        ],
+        re.search(r"<artifactId>gascoigne-native</artifactId>\s*<version>([^<]+)", pom).group(1),
+        re.search(r"<Version>([^<]+)</Version>", csproj).group(1),
+        tomllib.loads(Path("rust/native/Cargo.toml").read_text())["package"]["version"],
+    ]
+
+
+VERSIONS = {
+    "native": native,
+    "py": python,
+    "ts": typescript,
+    "java": java,
+    "dotnet": dotnet,
+    "rust": rust,
+}
 
 
 def main() -> int:

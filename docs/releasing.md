@@ -11,11 +11,18 @@ Each ecosystem has its own version and tag prefix. Pushing the tag runs
 | Java | `java-v0.1.2` | `gascoigne` and `gascoigne-spring-ai` jars |
 | .NET | `dotnet-v0.1.2` | `Gascoigne` and `Gascoigne.Extensions.AI` `.nupkg` |
 | Rust | `rust-v0.1.1` | the `.crate` |
+| Native library | `native-v0.1.0` | `libgascoigne-<version>-<os>-<arch>.tar.gz` per platform, and the per-platform packages of every language |
+
+The native release builds the library on every platform, attaches it, and builds the per-platform
+packages of every language with `scripts/package_native.py` (a wheel, an npm package, a Java
+classifier jar, a NuGet package and a crate per platform, plus the npm and Rust meta packages that
+pick the right one). Publish the `gascoigne` crate before tagging `native-v*`, because the Rust
+native crates depend on it. Language tags do not bundle anything.
 
 ## Steps
 
 1. Set the version in the package files: `pyproject.toml`, the two `package.json`, the two
-   `pom.xml`, the two `.csproj`, `Cargo.toml`. Go has no version file.
+   `pom.xml`, the two `.csproj`, `Cargo.toml`, `native/VERSION`. Go has no version file.
 2. Commit it, for example `release: python 0.2.0 <headline>`, and push.
 3. `git tag py-v0.2.0 && git push origin py-v0.2.0`.
 

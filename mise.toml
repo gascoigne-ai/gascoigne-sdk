@@ -11,6 +11,7 @@ rust = "stable"
 golangci-lint = "latest"
 
 [tasks."py:check"]
+depends = ["native:build"]
 description = "Python: ruff, pyright (strict), tests"
 dir = "python"
 run = [
@@ -22,6 +23,7 @@ run = [
 ]
 
 [tasks."ts:check"]
+depends = ["native:build"]
 description = "TypeScript: Biome, tsc, tests, and the demos typecheck"
 dir = "typescript"
 run = [
@@ -32,24 +34,50 @@ run = [
 ]
 
 [tasks."go:check"]
+depends = ["native:build"]
 description = "Go: gofmt, golangci-lint, tests"
 dir = "go"
 run = ["gofmt -l -e . | (! grep .)", "golangci-lint run ./...", "cd ../demos/go && golangci-lint run -c ../../go/.golangci.yml ./...", "go test ./..."]
 
+[tasks."native:build"]
+description = "Build libgascoigne (C ABI) into native/dist; GASCOIGNE_CLI_DIR points at a CLI checkout"
+dir = "native"
+run = [
+  "if [ -n \"$GASCOIGNE_CLI_DIR\" ]; then go mod edit -replace github.com/gascoigne-ai/gascoigne-cli=$GASCOIGNE_CLI_DIR; fi",
+  "go build -buildmode=c-shared -o dist/libgascoigne.so .",
+  "cd .. && python3 scripts/bundle_native.py",
+]
+
+[tasks."native:check"]
+description = "Native C ABI library: gofmt, vet, tests, shared build and a C smoke test"
+dir = "native"
+depends = ["native:build"]
+run = [
+  "gofmt -l -e . | (! grep .)",
+  "go vet ./...",
+  "go test ./...",
+  "gcc -o dist/smoke examples/smoke.c -Idist -Ldist -lgascoigne -Wl,-rpath,$PWD/dist",
+  "dist/smoke",
+]
+
 [tasks."java:check"]
+depends = ["native:build"]
 description = "Java: -Xlint:all -Werror, tests, Spring AI module, and the demos compile"
 dir = "java"
 run = [
+  "mvn -q -B -f native/pom.xml install",
   "mvn -q -B install",
   "mvn -q -B -f spring-ai/pom.xml install",
   "mvn -q -B -f ../demos/java/pom.xml package -DskipTests",
 ]
 
 [tasks."dotnet:check"]
+depends = ["native:build"]
 description = "dotnet: format, analyzers as errors, tests, and the demos build"
 dir = "dotnet"
 run = [
   "dotnet format --verify-no-changes src/Gascoigne",
+  "dotnet format --verify-no-changes src/Gascoigne.Native",
   "dotnet format --verify-no-changes src/Gascoigne.Extensions.AI",
   "dotnet test tests/Gascoigne.Tests",
   "dotnet test tests/Gascoigne.Extensions.AI.Tests",
@@ -58,13 +86,16 @@ run = [
 ]
 
 [tasks."rust:check"]
+depends = ["native:build"]
 description = "Rust: fmt, clippy (pedantic on the library), tests"
 dir = "rust"
 run = [
   "cargo fmt --check",
-  "cargo clippy --all-targets -- -D warnings",
+  "cargo clippy --all-targets --features native -- -D warnings",
   "cargo clippy --lib --examples -- -D warnings -W clippy::pedantic",
-  "cargo test",
+  "cargo test --features native",
+  "cargo clippy --manifest-path native/Cargo.toml --all-targets -- -D warnings",
+  "cargo test --manifest-path native/Cargo.toml",
   "cargo clippy --manifest-path ../demos/rust/plain/Cargo.toml -- -D warnings",
 ]
 
@@ -75,7 +106,7 @@ run = "python3 scripts/style.py"
 [tasks.check]
 description = "Everything that must pass before a change is done"
 depends = [
-  "style", "py:check", "ts:check", "go:check", "java:check", "dotnet:check", "rust:check",
+  "style", "py:check", "ts:check", "go:check", "native:check", "java:check", "dotnet:check", "rust:check",
 ]
 
 [tasks.e2e]
