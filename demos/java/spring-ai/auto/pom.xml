@@ -38,12 +38,12 @@
     <dependency>
       <groupId>ai.gascoigne</groupId>
       <artifactId>gascoigne</artifactId>
-      <version>0.1.2</version>
+      <version>0.9.0</version>
     </dependency>
     <dependency>
       <groupId>ai.gascoigne</groupId>
       <artifactId>gascoigne-spring-ai</artifactId>
-      <version>0.1.2</version>
+      <version>0.9.0</version>
     </dependency>
     <dependency>
       <groupId>ai.gascoigne.demo</groupId>

@@ -1,6 +1,7 @@
 # Releasing
 
-Each ecosystem has its own version and tag prefix. Pushing the tag runs
+Since 0.9.0 every ecosystem and the native library carry the version of the CLI release (`gascoigne-cli`
+`internal/version`); each keeps its own tag prefix. Pushing the tag runs
 `.github/workflows/release.yml`.
 
 | Ecosystem | Tag | Artifacts on the GitHub release |
