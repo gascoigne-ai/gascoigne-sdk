@@ -132,3 +132,33 @@ func TestWrapToolAndFunc(t *testing.T) {
 		t.Fatalf("func: %q", got)
 	}
 }
+
+type fakeBackend struct{ closed bool }
+
+func (f *fakeBackend) Optimize(_ context.Context, req Request) (Result, error) {
+	return Result{Text: "short", RawID: "id1", RawTokens: 100, OutTokens: 5}, nil
+}
+
+func (f *fakeBackend) Raw(context.Context, string) (string, error) { return "orig", nil }
+func (f *fakeBackend) Close() error                                { f.closed = true; return nil }
+
+// An embedded backend needs no server and no CLI, and offers no proxy URL.
+func TestBackendReplacesServer(t *testing.T) {
+	t.Setenv("GASCOIGNE_SERVER_ADDR", "127.0.0.1:9")
+	t.Setenv("PATH", "")
+	b := &fakeBackend{}
+	rt := New(Options{Backend: b})
+	res := rt.OptimizeResult(context.Background(), strings.Repeat("x", 500), Attrs{})
+	if res.Text != "short" || rt.Raw(context.Background(), "id1") != "orig" {
+		t.Fatalf("backend not used: %+v", res)
+	}
+	if rt.ProxyBaseURL(context.Background(), "openai") != "" {
+		t.Fatal("embedded mode must not hand out a proxy url")
+	}
+	if _, out := rt.Stats(); out != 5 {
+		t.Fatalf("stats out = %d", out)
+	}
+	if err := rt.Close(); err != nil || !b.closed {
+		t.Fatalf("close: %v closed=%v", err, b.closed)
+	}
+}

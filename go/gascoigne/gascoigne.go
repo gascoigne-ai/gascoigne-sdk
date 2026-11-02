@@ -67,6 +67,21 @@ const (
 	unavailable
 )
 
+// Request is one optimize call as an embedded Backend receives it.
+type Request struct {
+	Text           string
+	Agent, Session string
+	Attrs          Attrs
+}
+
+// Backend runs the engine in this process instead of through the server (see spec/native.md).
+// Set Options.Backend to use one; the module gascoigne-sdk/native provides it.
+type Backend interface {
+	Optimize(ctx context.Context, req Request) (Result, error)
+	Raw(ctx context.Context, rawID string) (string, error)
+	Close() error
+}
+
 // Options configure a Runtime. The zero value works.
 type Options struct {
 	Agent, Session string
@@ -75,6 +90,8 @@ type Options struct {
 	// OnResult sees (original, result) after each optimized call.
 	OnResult func(original string, r Result)
 	Logger   *slog.Logger
+	// Backend, when set, replaces the server: no HTTP, no CLI, no proxy.
+	Backend Backend
 }
 
 // Runtime finds the CLI, makes sure its server runs, and optimizes text through it.
@@ -179,6 +196,9 @@ func (r *Runtime) Ready(ctx context.Context) bool {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.state == unknown && r.opts.Backend != nil {
+		r.state = available
+	}
 	if r.state == unknown {
 		r.state = unavailable
 		if r.healthy(ctx) || r.startServer(ctx) {
@@ -203,6 +223,9 @@ func (r *Runtime) OptimizeResult(ctx context.Context, text string, a Attrs) Resu
 	same := Result{Text: text}
 	if text == "" || !r.Ready(ctx) {
 		return same
+	}
+	if r.opts.Backend != nil {
+		return r.viaBackend(ctx, text, a)
 	}
 	body, err := json.Marshal(optimizeRequest{
 		Text: text, Agent: r.opts.Agent, Session: r.opts.Session,
@@ -243,6 +266,34 @@ func (r *Runtime) OptimizeResult(ctx context.Context, text string, a Attrs) Resu
 	return out
 }
 
+// viaBackend is OptimizeResult for an embedded engine.
+func (r *Runtime) viaBackend(ctx context.Context, text string, a Attrs) Result {
+	out, err := r.opts.Backend.Optimize(ctx, Request{
+		Text: text, Agent: r.opts.Agent, Session: r.opts.Session, Attrs: a,
+	})
+	if err != nil || out.Text == "" {
+		r.failed(fmt.Errorf("embedded optimize: %w", err))
+		return Result{Text: text}
+	}
+	r.mu.Lock()
+	r.failures = 0
+	r.rawTokens += out.RawTokens
+	r.outTokens += cmp.Or(out.OutTokens, out.RawTokens)
+	r.mu.Unlock()
+	if r.opts.OnResult != nil {
+		r.opts.OnResult(text, out)
+	}
+	return out
+}
+
+// Close releases the embedded Backend, if any.
+func (r *Runtime) Close() error {
+	if r.opts.Backend == nil {
+		return nil
+	}
+	return r.opts.Backend.Close()
+}
+
 // Optimize returns the text the model should read.
 func (r *Runtime) Optimize(ctx context.Context, text string, a Attrs) string {
 	return r.OptimizeResult(ctx, text, a).Text
@@ -252,6 +303,13 @@ func (r *Runtime) Optimize(ctx context.Context, text string, a Attrs) string {
 func (r *Runtime) Raw(ctx context.Context, rawID string) string {
 	if !r.Ready(ctx) {
 		return ""
+	}
+	if r.opts.Backend != nil {
+		text, err := r.opts.Backend.Raw(ctx, rawID)
+		if err != nil {
+			r.opts.Logger.Debug("gascoigne raw failed", "err", err)
+		}
+		return text
 	}
 	url := r.baseURL() + "/sdk/v1/raw/" + rawID
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -274,7 +332,8 @@ func (r *Runtime) Raw(ctx context.Context, rawID string) string {
 // ProxyBaseURL routes an LLM client through the gascoigne proxy: api is "openai" (the /v1 root),
 // "anthropic" or "gemini". Empty in bypass.
 func (r *Runtime) ProxyBaseURL(ctx context.Context, api string) string {
-	if !r.Ready(ctx) {
+	// An embedded engine has no listening proxy.
+	if !r.Ready(ctx) || r.opts.Backend != nil {
 		return ""
 	}
 	if api == "openai" {
