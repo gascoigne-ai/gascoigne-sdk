@@ -4,7 +4,7 @@ Applies to every language in this repo. Readability first: if a reader has to pa
 
 ## Layout
 - **100 columns maximum**, for code, comments and docs alike. Linters and formatters are configured
-  to 100 (`ruff`, Biome, `rustfmt`, `golangci-lint lll`, `.editorconfig`); `scripts/style.sh` checks
+  to 100 (`ruff`, Biome, `rustfmt`, `golangci-lint lll`, `.editorconfig`); `scripts/style.py` checks
   every source file.
 - Break long calls one argument per line rather than squeezing; let the formatter decide.
 
