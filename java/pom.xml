@@ -31,6 +31,13 @@
       <version>2.22.3</version>
     </dependency>
     <dependency>
+      <groupId>net.java.dev.jna</groupId>
+      <artifactId>jna</artifactId>
+      <version>5.15.0</version>
+      <!-- Only for embedded mode (spec/native.md); the server variant needs no native access. -->
+      <optional>true</optional>
+    </dependency>
+    <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
       <version>5.11.4</version>
@@ -38,6 +45,10 @@
     </dependency>
   </dependencies>
   <build>
+    <!-- The unpacked bundle of this machine (scripts/bundle_native.py), for the native tests. -->
+    <testResources>
+      <testResource><directory>native/src/main/resources</directory></testResource>
+    </testResources>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

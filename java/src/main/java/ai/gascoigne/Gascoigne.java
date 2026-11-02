@@ -39,6 +39,8 @@ public final class Gascoigne {
         private Duration timeout = Duration.ofSeconds(5);
         private String addr;
         private String searchPath;
+        private Settings embedded;
+        private String library;
         private BiConsumer<String, Result> onResult = (original, result) -> {};
         private Consumer<String> warn = message -> System.err.println("[gascoigne] " + message);
 
@@ -72,6 +74,23 @@ public final class Gascoigne {
             return this;
         }
 
+        /**
+         * Runs the engine in this process through libgascoigne (needs JNA on the class path)
+         * instead of the server; {@code settings} is merged by the library.
+         * {@link #build()} throws {@link IllegalStateException} when no library is found.
+         * See spec/native.md.
+         */
+        public Builder embedded(Settings settings) {
+            this.embedded = settings;
+            return this;
+        }
+
+        /** Path of libgascoigne for embedded mode, instead of {@code $GASCOIGNE_LIB}. */
+        public Builder library(String path) {
+            this.library = path;
+            return this;
+        }
+
         /** Sees (original, result) after each optimized call; exceptions in it are ignored. */
         public Builder onResult(BiConsumer<String, Result> onResult) {
             this.onResult = onResult;
@@ -102,9 +121,49 @@ public final class Gascoigne {
     private long pausedUntilNanos;
     private boolean warned;
     private Stats stats = new Stats(0, 0);
+    private NativeEngine engine;
 
     private Gascoigne(Builder settings) {
         this.settings = settings;
+        this.engine = openEngine();
+    }
+
+    /** Settings for embedded mode: the builder's, else defaults when GASCOIGNE_MODE asks. */
+    private Settings embeddedSettings() {
+        if (settings.embedded != null) {
+            return settings.embedded;
+        }
+        return envIs("GASCOIGNE_MODE", "native") ? Settings.defaults() : null;
+    }
+
+    /**
+     * Opens the native engine when asked to.
+     *
+     * @throws IllegalStateException when native mode is asked for and no library can be loaded
+     */
+    private NativeEngine openEngine() {
+        Settings wanted = embeddedSettings();
+        if (wanted == null) {
+            return null;
+        }
+        try {
+            return new NativeEngine(wanted, settings.library);
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception | LinkageError e) {
+            throw new IllegalStateException("native gascoigne unavailable: " + e, e);
+        }
+    }
+
+    /** Releases the embedded engine, if any. */
+    public void close() {
+        synchronized (lock) {
+            if (engine != null) {
+                engine.close();
+                engine = null;
+                available = false;
+            }
+        }
     }
 
     private String baseUrl() {
@@ -219,7 +278,7 @@ public final class Gascoigne {
         }
         synchronized (lock) {
             if (available == null) {
-                available = healthy() || startServer();
+                available = engine != null || healthy() || startServer();
             }
             return available && System.nanoTime() >= pausedUntilNanos;
         }
@@ -264,7 +323,7 @@ public final class Gascoigne {
             return Result.unchanged(text);
         }
         OptimizeRequest body = OptimizeRequest.of(text, settings.agent, settings.session, attrs);
-        Optional<Result> result = post(body);
+        Optional<Result> result = engine != null ? embeddedCall(body) : post(body);
         if (result.isEmpty()) {
             recordFailure();
             return Result.unchanged(text);
@@ -277,6 +336,14 @@ public final class Gascoigne {
         }
         notifyObserver(text, result.get());
         return result.get();
+    }
+
+    private Optional<Result> embeddedCall(OptimizeRequest body) {
+        try {
+            return Optional.of(engine.optimize(body)).filter(r -> r.text() != null);
+        } catch (Exception e) {
+            return Optional.empty();
+        }
     }
 
     private void notifyObserver(String original, Result result) {
@@ -296,6 +363,9 @@ public final class Gascoigne {
     public String raw(String rawId) {
         if (!ready()) {
             return "";
+        }
+        if (engine != null) {
+            return engine.raw(rawId);
         }
         try {
             URI uri = URI.create(baseUrl() + "/sdk/v1/raw/" + rawId);
@@ -335,7 +405,8 @@ public final class Gascoigne {
 
     /** Base URL that routes an LLM client through the gascoigne proxy; empty in bypass. */
     public Optional<String> proxyBaseUrl(String api) {
-        if (!ready()) {
+        // The embedded engine has no listening proxy.
+        if (!ready() || engine != null) {
             return Optional.empty();
         }
         return Optional.of("openai".equals(api) ? baseUrl() + "/v1" : baseUrl());

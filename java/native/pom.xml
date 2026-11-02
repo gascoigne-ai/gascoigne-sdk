@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>ai.gascoigne</groupId>
+  <artifactId>gascoigne-native</artifactId>
+  <version>0.1.0</version>
+  <packaging>pom</packaging>
+  <name>gascoigne-native</name>
+  <description>The gascoigne engine as a bundled native library, for the gascoigne SDK's native mode</description>
+  <url>https://github.com/gascoigne-ai/gascoigne-sdk</url>
+  <licenses>
+    <license><name>Apache-2.0</name><url>https://www.apache.org/licenses/LICENSE-2.0</url></license>
+  </licenses>
+  <scm><url>https://github.com/gascoigne-ai/gascoigne-sdk</url></scm>
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/gascoigne-ai/gascoigne-sdk</url>
+    </repository>
+  </distributionManagement>
+  <!-- Data only. scripts/package_native.py attaches one jar per platform as a classifier
+       (linux-amd64, darwin-arm64, ...), each holding gascoigne/native/<os>-<arch>/<library>.gz,
+       which ai.gascoigne.NativeEngine reads (spec/native.md). An application depends on the
+       classifier of its own system, for example with the os-maven-plugin. -->
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+</project>
