@@ -121,7 +121,7 @@ internal sealed class NativeEngine : IDisposable
     }
 
     private static string Digest(byte[] data) =>
-        Convert.ToHexStringLower(SHA256.HashData(data))[..16];
+        Convert.ToHexString(SHA256.HashData(data))[..16];
 
     /// <summary>This platform's entry of the Gascoigne.Native package, unpacked, or null.</summary>
     private static string? Bundled()

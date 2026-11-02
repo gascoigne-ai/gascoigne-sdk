@@ -79,6 +79,7 @@ run = [
   "dotnet format --verify-no-changes src/Gascoigne",
   "dotnet format --verify-no-changes src/Gascoigne.Native",
   "dotnet format --verify-no-changes src/Gascoigne.Extensions.AI",
+  "dotnet build src/Gascoigne -f net8.0",
   "dotnet test tests/Gascoigne.Tests",
   "dotnet test tests/Gascoigne.Extensions.AI.Tests",
   "dotnet build ../demos/dotnet/microsoft-extensions-ai/wrap",
