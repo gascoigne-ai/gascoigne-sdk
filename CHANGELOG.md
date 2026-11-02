@@ -1,68 +1,87 @@
 # Changelog
 
 All notable changes to the gascoigne SDKs. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow the CLI release (from 0.9.0); each ecosystem has its own tag prefix
-(`py-v`, `ts-v`, `go/v`, `java-v`, `dotnet-v`, `rust-v`, `native-v`, see `docs/releasing.md`); entries name the
-SDKs they touch.
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Since 0.9.0 every SDK and the native library carry the
+version of the CLI release they were built with. Each ecosystem has its own tag prefix (`py-v`, `ts-v`, `go/v`,
+`java-v`, `dotnet-v`, `rust-v`, `native-v`, see `docs/releasing.md`). Each release starts with "In short": what
+changed for you, in plain words.
 
 ## [Unreleased]
 
 ## [0.9.1] - 2026-11-02
 
-Version bump to match CLI 0.9.1, plus native demos for every framework and a README that leads with a try-it. The
-0.9.0 tags did not start the release workflow (more than three tags in one push), so 0.9.1 is the first release of
-the 0.9 line.
+The first release of the 0.9 line that shipped: native mode in every SDK, native demos for every framework, and a
+README you can try in a minute. It needs `gascoigne-cli` 0.9.1 or later in proxy mode.
+
+### In short
+
+- **Run gascoigne inside your app.** Every SDK can load `libgascoigne` and shorten tool results in your own process:
+  no server, no `gascoigne` binary, one less thing to deploy.
+- **More demos you can run.** Native demos for every Python and TypeScript framework and for Spring AI, next to the
+  wrap, proxy and auto ones. `GASCOIGNE_DEMO_DRY=1` runs them without an API key.
+- **A README that starts with a try-it.** A real before and after (12,425 to 145 tokens), a two-line start per
+  language, and native or proxy side by side.
+- **Releases that build.** The release workflow now fetches the CLI it needs, the .NET package builds on net8.0 again,
+  and the macOS Intel library builds on a current runner.
 
 ### Added
 
-- Native demos for every Python and TypeScript framework and for Spring AI (`demos/<language>/<framework>/native`).
+- Native demos for the Python (agno, google-adk, langchain, openai-agents, pydantic-ai, smolagents), TypeScript
+  (langchain, mastra, openai-agents) and Spring AI demos.
 
 ### Changed
 
-- README: a 30 second try-it that needs no API key, a real before/after, native or proxy side by side.
+- README: a 30 second try-it, a real before and after, and native or proxy in one table.
 - Install, release and verifying guides name the 0.9.1 tags.
+
+### Fixed
+
+- Release jobs check out the CLI that `native:build` needs.
+- .NET: the digest of the unpacked library no longer uses an API that exists only on .NET 9, so the net8.0 target
+  compiles. `dotnet:check` builds net8.0 too.
+- The darwin-amd64 library builds on `macos-15-intel`, because `macos-13` is retired.
 
 ## [0.9.0] - 2026-11-02
 
-Native mode: every SDK can run the engine inside the application process instead of talking to a `gascoigne`
-server. It needs `gascoigne-cli` 0.9.0 or later (the `inproc` facade). Every SDK and the native library move to 0.9.0
-to match the CLI release they were built against (see Versioning).
+Native mode and the native library. The 0.9.0 tags did not start the release workflow (more than three tags in one
+push), so 0.9.1 is the first release of this line.
+
+### In short
+
+- **Run gascoigne inside your app (native mode).** Python, TypeScript, Go, Java, .NET and Rust load `libgascoigne` and
+  do the work in your process. Simpler to deploy and quicker per call. The old way, through the local server, still
+  works and stays the default.
+- **One version number.** The SDKs now share the CLI's version.
 
 ### Added
 
 - `native/`: `libgascoigne`, a C ABI library (`go build -buildmode=c-shared`) that runs the engine in the process,
-  with no server, HTTP or `gascoigne` binary. `native-v*` tags build it for linux, macOS and Windows (amd64, arm64).
-  Contract in `spec/native.md`.
-- Python, TypeScript, Go, Java, .NET and Rust: native mode loads `libgascoigne` (ctypes, koffi, in-process Go
-  `Backend`, JNA, run-time loading, libloading). `GASCOIGNE_MODE=native|proxy` picks the default, the argument to
-  `init` wins; `GASCOIGNE_LIB`, `GASCOIGNE_LIB_PATH` and `GASCOIGNE_BIN` locate the library.
-- Native mode demos in every language.
+  built for Linux, macOS and Windows (amd64, arm64) by `native-v*` tags. Contract in `spec/native.md`.
+- Native mode in every SDK (ctypes, koffi, in-process Go `Backend`, JNA, run-time loading, libloading).
+  `GASCOIGNE_MODE=native|proxy` picks the default; the argument to `init` wins; `GASCOIGNE_LIB`,
+  `GASCOIGNE_LIB_PATH` and `GASCOIGNE_BIN` locate the library.
+- Native demos in every language.
 
 ### Changed
 
 - Docs describe a native and a proxy variant of every SDK. Proxy mode is unchanged.
 - Commit style check allows `chore` commits.
 
-### Versioning
-
-- From 0.9.0 every package (Python, TypeScript, Go, Java, .NET, Rust and `native`) carries the CLI's version number.
-  Earlier versions were independent (0.1.x).
-
 ## 2026-10-14 - signed releases
 
-### Release
+### In short
 
-- Python 0.1.1 (first signed release); TypeScript, Java and .NET 0.1.2; Rust 0.1.1; Go 0.1.1.
-- Release files are signed with build provenance and cosign (`docs/verifying.md`), attached with checksums to a
-  GitHub release; npm, Maven and NuGet packages also go to GitHub Packages. The Go release carries a signed source
-  archive.
+- **Releases you can verify.** Release files are signed with build provenance and cosign (`docs/verifying.md`), and
+  come with checksums.
+- **Easy installs.** npm, Maven and NuGet packages are on GitHub Packages, and the repository is public, so you
+  install without a login.
+- **Versions:** Python 0.1.1, TypeScript, Java and .NET 0.1.2, Rust 0.1.1, Go 0.1.1.
 
 ### Changed
 
 - TypeScript publishes under the `@gascoigne-ai` scope.
 - Dependencies: vitest 4.1.11 (path traversal fix), golang.org/x/crypto 0.52.0 in the demos, jackson-databind
   2.22.3, maven-compiler-plugin 3.16.0.
-- The repository is public: install without a login (`docs/install.md`).
 - Removed the CrewAI and LlamaIndex demos.
 
 ### Fixed
@@ -71,6 +90,13 @@ to match the CLI release they were built against (see Versioning).
 - Demos use random request ids so the proxy cache cannot hide results.
 
 ## 0.1.0 - 2026-10-13 to 2026-10-14 - first SDKs
+
+### In short
+
+- **Shorter tool results in your agent app,** in six languages: Python, TypeScript, Go, Java, .NET and Rust, with
+  one surface: `optimize`, `raw`, `proxy_base_url`, `stats`, `wrap_tool`.
+- **Framework demos** to copy from, including proxy mode, and an `auto()` call that decorates MCP and LangChain tools
+  when you ask for it.
 
 ### Added
 
