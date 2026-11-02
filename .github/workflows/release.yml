@@ -28,7 +28,7 @@ jobs:
         include:
           - { os: ubuntu-latest, name: linux-amd64, file: libgascoigne.so }
           - { os: ubuntu-24.04-arm, name: linux-arm64, file: libgascoigne.so }
-          - { os: macos-13, name: darwin-amd64, file: libgascoigne.dylib }
+          - { os: macos-15-intel, name: darwin-amd64, file: libgascoigne.dylib }
           - { os: macos-14, name: darwin-arm64, file: libgascoigne.dylib }
           - { os: windows-latest, name: windows-amd64, file: gascoigne.dll }
     runs-on: ${{ matrix.os }}
