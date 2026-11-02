@@ -5,6 +5,7 @@ One tree, one convention: `demos/<language>/<framework>/<mode>`.
 | Mode | What it shows | Gascoigne code |
 |---|---|---|
 | `wrap` | The tool is wrapped explicitly. | `init` + wrap the tool |
+| `native` | Like `wrap`, with the engine inside the process: no server, no CLI. | `init` in native mode + wrap the tool |
 | `proxy` | LLM traffic goes through the gascoigne proxy; tools are untouched. | `init` + `proxy_base_url` |
 | `auto` | One explicit call decorates every tool and MCP call. | `init` + `auto()` / `@EnableGascoigne` |
 
@@ -23,7 +24,7 @@ demos/
     langchaingo/{wrap,proxy}
   dotnet/               # kit/ is the shared helper
     microsoft-extensions-ai/{wrap,auto}
-  rust/plain/wrap.rs    # no framework, no LLM
+  rust/plain/{wrap,native}.rs    # no framework, no LLM
 ```
 
 A demo's main file shows only the integration. Environment loading, OpenRouter settings, the noisy
@@ -37,12 +38,12 @@ cp .env.example .env     # in the repo root; put your OPENROUTER_API_KEY in it
 
 | Language | Run |
 |---|---|
-| Python | `cd demos/python && uv run --extra langgraph python langgraph/wrap.py` (`proxy.py`, `auto.py` the same way; for `auto.py` use `--extra auto-mcp`) |
-| TypeScript | `cd demos/typescript && pnpm install && pnpm ai-sdk:wrap` (or `:proxy`) |
-| Java | `mvn -f java/pom.xml install -DskipTests && mvn -f java/spring-ai/pom.xml install -DskipTests && cd demos/java && mvn -q package && java -jar spring-ai/wrap/target/demo-spring-ai-wrap-0.0.0.jar` |
-| .NET | `cd demos/dotnet && dotnet run --project microsoft-extensions-ai/wrap` (or `auto`) |
-| Go | `cd demos/go && go run ./langchaingo/wrap` |
-| Rust | `cd demos/rust/plain && cargo run` |
+| Python | `cd demos/python && uv run --extra langgraph python langgraph/wrap.py` (`proxy.py`, `auto.py`, `native.py` the same way; for `auto.py` use `--extra auto-mcp`) |
+| TypeScript | `cd demos/typescript && pnpm install && pnpm ai-sdk:wrap` (or `:proxy`, `:native`) |
+| Java | (`langchain4j/native`: `mvn -q -B -pl langchain4j/native exec:java`) `mvn -f java/pom.xml install -DskipTests && mvn -f java/spring-ai/pom.xml install -DskipTests && cd demos/java && mvn -q package && java -jar spring-ai/wrap/target/demo-spring-ai-wrap-0.0.0.jar` |
+| .NET | `cd demos/dotnet && dotnet run --project microsoft-extensions-ai/wrap` (or `auto`, `native`) |
+| Go | `cd demos/go && go run ./langchaingo/wrap` (native: `cd native && go run ./examples/plain`) |
+| Rust | `cd demos/rust/plain && cargo run` (native: `cargo run --bin native`) |
 
 No key yet? `GASCOIGNE_DEMO_DRY=1` builds each agent and calls its tool without the LLM
 (`mise run demo` does that for all `wrap` demos), and `mise run demo:proxy` runs the `proxy` and

@@ -8,5 +8,9 @@ publish = false
 name = "plain"
 path = "wrap.rs"
 
+[[bin]]
+name = "native"
+path = "native.rs"
+
 [dependencies]
-gascoigne = { path = "../../../rust" }
+gascoigne = { path = "../../../rust", features = ["native"] }

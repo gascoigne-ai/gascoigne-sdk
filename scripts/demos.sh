@@ -24,3 +24,23 @@ echo "-- go / langchaingo"
 (cd demos/go && go run ./langchaingo/wrap | tail -2)
 echo "-- rust / plain"
 (cd demos/rust/plain && cargo run -q | tail -2)
+
+# Native mode: the engine runs in the demo's own process, no server. Needs libgascoigne
+# (`mise run native:build`, or GASCOIGNE_LIB).
+export GASCOIGNE_LIB="${GASCOIGNE_LIB:-$PWD/native/dist/libgascoigne.so}"
+if [ -f "$GASCOIGNE_LIB" ]; then
+  echo "-- native / python langgraph"
+  (cd demos/python && uv run --extra langgraph python langgraph/native.py | tail -2)
+  echo "-- native / typescript ai-sdk"
+  (cd demos/typescript && pnpm -s ai-sdk:native | tail -2)
+  echo "-- native / java langchain4j"
+  (cd demos/java && mvn -q -B -pl langchain4j/native exec:java | tail -2)
+  echo "-- native / dotnet microsoft-extensions-ai"
+  (cd demos/dotnet && dotnet run --project microsoft-extensions-ai/native | tail -2)
+  echo "-- native / go plain"
+  (cd native && go run ./examples/plain | tail -2)
+  echo "-- native / rust plain"
+  (cd demos/rust/plain && cargo run -q --bin native | tail -2)
+else
+  echo "-- native demos skipped: no libgascoigne (mise run native:build)"
+fi

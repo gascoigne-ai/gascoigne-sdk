@@ -56,7 +56,7 @@ Every SDK has the same surface: `optimize`, `raw`, `proxy_base_url`, `stats`, `w
 ## Demos (OpenRouter)
 
 All demos live in [`demos/`](demos/README.md), as `demos/<language>/<framework>/<mode>` with mode
-`wrap`, `proxy` or `auto`. Each main file is the integration: one or two added lines. The noisy tool,
+`wrap`, `proxy`, `auto` or `native`. Each main file is the integration: one or two added lines. The noisy tool,
 OpenRouter settings and the report live in a small `kit` next to it.
 
 ```sh
@@ -71,6 +71,11 @@ cp .env.example .env        # put your OPENROUTER_API_KEY in it (the file is git
 | .NET | Microsoft.Extensions.AI | `cd demos/dotnet && dotnet run --project microsoft-extensions-ai/wrap` |
 | Go | langchaingo | `cd demos/go && go run ./langchaingo/wrap` |
 | Rust | none (no LLM, optimizes a log) | `cd demos/rust/plain && cargo run` |
+
+The `native` demos (`python/langgraph/native.py`, `ai-sdk:native`, `langchain4j/native`,
+`microsoft-extensions-ai/native`, `rust/plain` as `--bin native`, and `native/examples/plain` for Go)
+are the `wrap` demos with the engine in the process: no server, no CLI. Build the library once with
+`mise run native:build` and point `GASCOIGNE_LIB=native/dist/libgascoigne.so` at it.
 
 No key yet? `GASCOIGNE_DEMO_DRY=1` builds each agent and calls its tool without the LLM, and
 `mise run demo` does that for all of them.
