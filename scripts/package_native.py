@@ -22,6 +22,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.error
+import urllib.request
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -201,11 +203,28 @@ def rust_meta(out: Path, ver: str) -> None:
     crate_file(crate, out)
 
 
+def core_crate_published(core: str) -> bool:
+    """True when this `gascoigne` crate version is on crates.io; the Rust packages need it."""
+    request = urllib.request.Request(
+        f"https://crates.io/api/v1/crates/gascoigne/{core}",
+        headers={"User-Agent": "gascoigne-sdk package_native.py"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=20):
+            return True
+    except (urllib.error.URLError, TimeoutError):
+        return False
+
+
 def main() -> int:
-    source, out = Path(sys.argv[1]), Path(sys.argv[2])
+    # Absolute, because some packers run inside a temporary package directory.
+    source, out = Path(sys.argv[1]), Path(sys.argv[2]).resolve()
     out.mkdir(parents=True, exist_ok=True)
     ver = Path("native/VERSION").read_text().strip()
     core = version("rust/Cargo.toml", r'(?m)^version = "([^"]+)"')
+    with_rust = core_crate_published(core)
+    if not with_rust:
+        print(f"skip Rust crates: gascoigne {core} is not on crates.io (publish it first)")
     present = {d.name for d in source.iterdir() if d.is_dir()}
     for p in PLATFORMS:
         if p.key not in present:
@@ -216,9 +235,11 @@ def main() -> int:
         npm(p, out, ver)
         java(p, out, ver)
         dotnet(p, out)
-        rust(p, out, ver, core)
+        if with_rust:
+            rust(p, out, ver, core)
     npm_meta(out, ver)
-    rust_meta(out, ver)
+    if with_rust:
+        rust_meta(out, ver)
     print(f"packages in {out}")
     return 0
 

@@ -18,7 +18,7 @@ The native release builds the library on every platform, attaches it, and builds
 packages of every language with `scripts/package_native.py` (a wheel, an npm package, a Java
 classifier jar, a NuGet package and a crate per platform, plus the npm and Rust meta packages that
 pick the right one). Publish the `gascoigne` crate before tagging `native-v*`, because the Rust
-native crates depend on it. Language tags do not bundle anything.
+native crates depend on it; until it is on crates.io the packager skips the Rust crates and ships the rest. Language tags do not bundle anything.
 
 ## Steps
 
