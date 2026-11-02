@@ -30,4 +30,14 @@ public sealed class GascoigneOptions
     /// <summary>Where the one-time warnings go.</summary>
     public Action<string> Warn { get; init; } =
         message => Console.Error.WriteLine($"[gascoigne] {message}");
+
+    /// <summary>
+    /// Runs the engine in this process through libgascoigne instead of the server; the settings
+    /// are merged by the library. The client constructor throws when no library is found.
+    /// <c>GASCOIGNE_MODE=native</c> selects it with default settings. See spec/native.md.
+    /// </summary>
+    public EmbeddedSettings? Embedded { get; init; }
+
+    /// <summary>Path of libgascoigne for embedded mode, instead of <c>$GASCOIGNE_LIB</c>.</summary>
+    public string? Library { get; init; }
 }

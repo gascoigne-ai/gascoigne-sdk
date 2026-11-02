@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- One package per system: Gascoigne.Native.linux-x64, osx-arm64, win-x64, ... The release passes
+         -p:Rid; the default is this machine for the tests. -->
+    <Rid Condition="'$(Rid)' == ''">linux-x64</Rid>
+    <PackageId>Gascoigne.Native.$(Rid)</PackageId>
+    <Version>0.1.0</Version>
+    <Description>The gascoigne engine as a bundled native library, for the Gascoigne SDK's native mode</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/gascoigne-ai/gascoigne-sdk</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <!-- Data only. lib/<os>-<arch>/<library>.gz is written by scripts/bundle_native.py and embedded
+       under the logical name gascoigne/native/<os>-<arch>/<library>.gz, which the Gascoigne
+       package finds by assembly name (spec/native.md). -->
+  <ItemGroup>
+    <EmbeddedResource Include="lib/**/*.gz" LogicalName="gascoigne/native/%(RecursiveDir)%(Filename)%(Extension)" />
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>

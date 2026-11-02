@@ -35,17 +35,23 @@ public sealed class GascoigneClient : IDisposable
     private DateTime _pausedUntil = DateTime.MinValue;
     private bool _warned;
     private Stats _stats;
+    private NativeEngine? _engine;
 
-    /// <summary>Creates a client; nothing is probed until the first call.</summary>
+    /// <summary>
+    /// Creates a client; nothing is probed until the first call. In native mode the library is
+    /// loaded here and a missing one throws <see cref="FileNotFoundException"/>.
+    /// </summary>
     public GascoigneClient(GascoigneOptions? options = null)
     {
         _options = options ?? new GascoigneOptions();
         _http = new HttpClient { Timeout = _options.Timeout };
+        _engine = OpenEngine(_options);
     }
 
-    /// <summary>Releases the HTTP client.</summary>
+    /// <summary>Releases the HTTP client and the embedded engine.</summary>
     public void Dispose()
     {
+        _engine?.Dispose();
         _http.Dispose();
         _probe.Dispose();
     }
@@ -75,6 +81,14 @@ public sealed class GascoigneClient : IDisposable
         }
 
         _options.Warn(message);
+    }
+
+    /// <summary>Opens the native engine when asked to; throws when no library is found.</summary>
+    private static NativeEngine? OpenEngine(GascoigneOptions options)
+    {
+        var settings = options.Embedded
+            ?? (EnvIs("GASCOIGNE_MODE", "native") ? new EmbeddedSettings() : null);
+        return settings is null ? null : new NativeEngine(settings, options.Library);
     }
 
     private async Task<bool> HealthyAsync(CancellationToken ct)
@@ -108,7 +122,8 @@ public sealed class GascoigneClient : IDisposable
         e is HttpRequestException
             or TaskCanceledException
             or JsonException
-            or NotSupportedException;
+            or NotSupportedException
+            or InvalidOperationException;
 
     private string? FindCli()
     {
@@ -188,7 +203,9 @@ public sealed class GascoigneClient : IDisposable
             await _probe.WaitAsync(ct);
             try
             {
-                _available ??= await HealthyAsync(ct) || await StartServerAsync(ct);
+                _available ??= _engine is not null
+                    || await HealthyAsync(ct)
+                    || await StartServerAsync(ct);
             }
             finally
             {
@@ -236,10 +253,7 @@ public sealed class GascoigneClient : IDisposable
         var request = OptimizeRequest.From(text, _options, attrs);
         try
         {
-            using var response = await _http.PostAsJsonAsync(
-                $"{BaseUrl}/sdk/v1/optimize", request, RequestJson, ct);
-            response.EnsureSuccessStatusCode();
-            var result = await response.Content.ReadFromJsonAsync<Result>(ct);
+            var result = await PostAsync(request, ct);
             if (result?.Text is null)
             {
                 RecordFailure();
@@ -255,6 +269,20 @@ public sealed class GascoigneClient : IDisposable
             RecordFailure();
             return unchanged;
         }
+    }
+
+    private async Task<Result?> PostAsync(OptimizeRequest request, CancellationToken ct)
+    {
+        if (_engine is { } engine)
+        {
+            var body = JsonSerializer.Serialize(request, RequestJson);
+            return JsonSerializer.Deserialize<Result>(engine.Optimize(body));
+        }
+
+        using var response = await _http.PostAsJsonAsync(
+            $"{BaseUrl}/sdk/v1/optimize", request, RequestJson, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Result>(ct);
     }
 
     private void NotifyObserver(string original, Result result)
@@ -282,6 +310,11 @@ public sealed class GascoigneClient : IDisposable
             return "";
         }
 
+        if (_engine is { } engine)
+        {
+            return TryRaw(engine, rawId);
+        }
+
         try
         {
             var url = $"{BaseUrl}/sdk/v1/raw/{Uri.EscapeDataString(rawId)}";
@@ -290,6 +323,18 @@ public sealed class GascoigneClient : IDisposable
         catch (Exception e) when (IsTransient(e))
         {
             RecordFailure();
+            return "";
+        }
+    }
+
+    private static string TryRaw(NativeEngine engine, string rawId)
+    {
+        try
+        {
+            return engine.Raw(rawId);
+        }
+        catch (InvalidOperationException)
+        {
             return "";
         }
     }
@@ -326,7 +371,8 @@ public sealed class GascoigneClient : IDisposable
     public async Task<string?> ProxyBaseUrlAsync(
         string api = "openai", CancellationToken ct = default)
     {
-        if (!await ReadyAsync(ct))
+        // The embedded engine has no listening proxy.
+        if (!await ReadyAsync(ct) || _engine is not null)
         {
             return null;
         }
