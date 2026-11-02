@@ -1,0 +1,19 @@
+[package]
+name = "gascoigne-native"
+version = "0.1.0"
+edition = "2021"
+description = "The gascoigne engine as a bundled native library, for the gascoigne SDK's native mode"
+license = "Apache-2.0"
+repository = "https://github.com/gascoigne-ai/gascoigne-sdk"
+readme = "README.md"
+# Each platform's library is about 9 MB compressed, over the crates.io limit: use this crate as a
+# git dependency.
+publish = false
+
+[dependencies]
+flate2 = "1"
+gascoigne = { path = "..", features = ["native"] }
+sha2 = "0.10"
+
+# Its own build, not a member of the SDK crate.
+[workspace]

@@ -3,6 +3,10 @@
 //! Every call is safe: when the gascoigne CLI is missing or the server misbehaves, inputs come back
 //! unchanged and no error reaches the caller.
 
+mod native;
+
+pub use native::Settings;
+
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::{Mutex, MutexGuard, PoisonError};
@@ -85,6 +89,7 @@ struct State {
     paused_until: Option<Instant>,
     warned: bool,
     stats: Stats,
+    native: Option<native::Native>,
 }
 
 impl State {
@@ -181,6 +186,44 @@ impl Runtime {
         }
     }
 
+    /// A runtime that runs the engine in this process through libgascoigne (crate feature
+    /// `native`). `settings` is merged by the library over its defaults and the user's file.
+    ///
+    /// # Errors
+    /// Fails when no library is found or it cannot be loaded; the message names where it looked.
+    pub fn native(agent: &str, settings: Settings) -> std::result::Result<Self, String> {
+        Self::native_at(agent, settings, None)
+    }
+
+    /// Like [`Runtime::native`], loading the library at `library` when given (the
+    /// `gascoigne-native` crate passes the one it unpacked).
+    ///
+    /// # Errors
+    /// As [`Runtime::native`].
+    // Without the `native` feature the arguments are not used, which is the point of the stub.
+    #[cfg_attr(not(feature = "native"), allow(clippy::needless_pass_by_value))]
+    pub fn native_at(
+        agent: &str,
+        settings: Settings,
+        library: Option<PathBuf>,
+    ) -> std::result::Result<Self, String> {
+        let runtime = Runtime::new(agent);
+        runtime.state().native = Some(native::Native::open(&settings, library.as_deref())?);
+        Ok(runtime)
+    }
+
+    /// Native when `$GASCOIGNE_MODE` is `native`, else a proxy runtime.
+    ///
+    /// # Errors
+    /// As [`Runtime::native`], in native mode only.
+    pub fn from_env(agent: &str, settings: Settings) -> std::result::Result<Self, String> {
+        if env("GASCOIGNE_MODE") == "native" {
+            Self::native(agent, settings)
+        } else {
+            Ok(Self::new(agent))
+        }
+    }
+
     /// A poisoned lock only means another thread panicked; the counters inside stay usable.
     fn state(&self) -> MutexGuard<'_, State> {
         self.state.lock().unwrap_or_else(PoisonError::into_inner)
@@ -193,7 +236,8 @@ impl Runtime {
         }
         let mut state = self.state();
         if state.available.is_none() {
-            let available = healthy(&mut state) || start_server(&mut state);
+            let available =
+                state.native.is_some() || healthy(&mut state) || start_server(&mut state);
             state.available = Some(available);
         }
         let available = state.available == Some(true);
@@ -224,6 +268,20 @@ impl Runtime {
             .filter(|r| !r.text.is_empty())
     }
 
+    /// Runs the request in the embedded engine when there is one, else through the server.
+    fn send(&self, request: &OptimizeRequest) -> Option<Result> {
+        let state = self.state();
+        let Some(native) = &state.native else {
+            drop(state);
+            return self.post(request);
+        };
+        let body = serde_json::to_string(request).ok()?;
+        let out = native.optimize(&body).ok()?;
+        serde_json::from_str::<Result>(&out)
+            .ok()
+            .filter(|r| !r.text.is_empty())
+    }
+
     /// Optimize `text`; on any problem the result carries the input unchanged.
     pub fn optimize_result(&self, text: &str, attrs: &Attrs) -> Result {
         let unchanged = Result {
@@ -242,7 +300,7 @@ impl Runtime {
             query: &attrs.query,
             model: &attrs.model,
         };
-        let Some(result) = self.post(&request) else {
+        let Some(result) = self.send(&request) else {
             self.record_failure();
             return unchanged;
         };
@@ -267,6 +325,9 @@ impl Runtime {
         if !self.ready() {
             return String::new();
         }
+        if let Some(native) = &self.state().native {
+            return native.raw(raw_id).unwrap_or_default();
+        }
         let url = format!("{}/sdk/v1/raw/{raw_id}", base_url());
         ureq::get(&url)
             .timeout(self.timeout)
@@ -279,7 +340,8 @@ impl Runtime {
     /// Base URL that routes an LLM client through the gascoigne proxy, or `None` in bypass.
     /// `api` is "openai" (`/v1`), "anthropic" or "gemini".
     pub fn proxy_base_url(&self, api: &str) -> Option<String> {
-        if !self.ready() {
+        // The embedded engine has no listening proxy.
+        if !self.ready() || self.state().native.is_some() {
             return None;
         }
         let base = base_url();
