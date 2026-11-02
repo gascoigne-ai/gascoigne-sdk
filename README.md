@@ -75,6 +75,41 @@ cp .env.example .env        # put your OPENROUTER_API_KEY in it (the file is git
 No key yet? `GASCOIGNE_DEMO_DRY=1` builds each agent and calls its tool without the LLM, and
 `mise run demo` does that for all of them.
 
+## Two variants: native or proxy
+
+Every SDK talks to gascoigne in one of two ways (contract: [`spec/native.md`](spec/native.md)):
+
+- **proxy** (default): HTTP to the local `gascoigne server`, which also serves the LLM proxy URL.
+- **native**: the engine runs inside your process as `libgascoigne`, a C ABI library built from
+  [`native/`](native). No server, no CLI on `PATH`, no proxy URL. Config stays in the library: it
+  merges its defaults, your user file, then what you pass.
+
+The SDK stays thin and never carries the library. Native mode finds `libgascoigne` in
+`$GASCOIGNE_LIB`, then in the system directories (`/usr/local/lib`, `~/.local/lib`, ...), then in an
+optional per-platform package you add, which unpacks to the temp directory on first use. When none
+has it, native mode raises an error that lists where it looked. Each language's package is one
+platform (about 9 MB), picked automatically where the package manager can:
+
+| Language | Optional native package | Picked |
+|---|---|---|
+| Python | `gascoigne-native` | pip, by platform |
+| TypeScript | `@gascoigne-ai/sdk-native` (and `koffi`) | npm, by `os` and `cpu` |
+| Go | `gascoigne-sdk/native/embedded` | engine linked in |
+| Java | `ai.gascoigne:gascoigne-native`, classifier of your system (and `jna`) | you |
+| .NET | `Gascoigne.Native.<rid>` | you |
+| Rust | `gascoigne-native` | Cargo, by target |
+
+Choose with `GASCOIGNE_MODE=native|proxy` or in code. Point `GASCOIGNE_LIB` at a library file, or `GASCOIGNE_LIB_PATH` at directories.
+
+| Language | Native, in code | Loads the library with |
+|---|---|---|
+| Python | `init(mode="native", settings=Settings(set=[...]))` | ctypes (stdlib) |
+| TypeScript | `init({ mode: "native", settings: { set: [...] } })` | `koffi` (optional peer) |
+| Go | `gascoigne.New(Options{Backend: b})`, `b, _ := embedded.New(ctx, ...)` | in process, no library |
+| Java | `Gascoigne.builder().embedded(Settings.defaults()).build()` | JNA (optional) |
+| .NET | `new GascoigneOptions { Embedded = new EmbeddedSettings() }` | `NativeLibrary` |
+| Rust | `Runtime::native("agent", Settings::default())?`, feature `native` | `libloading` |
+
 ## Proxy mode: automatic, no tool wrapping
 
 Wrapping a tool is explicit. The alternative is to point the framework's LLM client at the gascoigne
@@ -139,6 +174,10 @@ retrieve tool, and list it in `skip` so fetching an original does not shorten it
 |---|---|
 | `GASCOIGNE_BIN` | path of the CLI instead of `PATH` lookup |
 | `GASCOIGNE_SERVER_ADDR` | server address, default `127.0.0.1:7878` |
+| `GASCOIGNE_MODE` | `native` or `proxy` (default) |
+| `GASCOIGNE_LIB` | path of `libgascoigne` for native mode |
+| `GASCOIGNE_LIB_PATH` | extra directories to search for it |
+| `GASCOIGNE_LIB_DIR` / `GASCOIGNE_UNPACK=off` | where a bundled library unpacks / skip unpacking |
 | `GASCOIGNE_SDK=off` / `GASCOIGNE_SERVER=off` | bypass silently |
 
 Needs a CLI with the `/sdk/v1` API. To also trim what the framework's own LLM client sends, point it at
