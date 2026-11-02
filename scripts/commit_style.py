@@ -8,7 +8,7 @@ import re
 import subprocess
 import sys
 
-TYPES = "feat|fix|docs|test|refactor|build|ci|release"
+TYPES = "feat|fix|docs|test|refactor|build|ci|chore|release"
 # The description starts lower case unless it opens with a name or identifier (Spring, UseFoo).
 SUBJECT = re.compile(rf"^({TYPES})(\([a-z0-9][a-z0-9-]*\))?: [A-Za-z0-9`$@/.\-].*[^.]$")
 MAX_SUBJECT = 72
