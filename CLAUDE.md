@@ -11,5 +11,6 @@ SDKs that embed gascoigne-cli token optimization into agent frameworks. Contract
 Shared with the other gascoigne repos: submodule `.harness/common`.
 @.harness/common/rules.md
 @.harness/common/commit-style.md
+@.harness/common/code-style.md
 @.harness/rules.md
 @.harness/code-style.md

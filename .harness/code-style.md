@@ -1,6 +1,7 @@
 # Code style
 
-Applies to every language in this repo. Readability first: if a reader has to pause, rewrite.
+Adds to the shared `common/code-style.md` (readability first, shape, errors, comments, docs, tests)
+for every language in this repo.
 
 ## Layout
 - **100 columns maximum**, for code, comments and docs alike. Linters and formatters are configured
@@ -17,29 +18,11 @@ Applies to every language in this repo. Readability first: if a reader has to pa
   ```
 
   not `gascoigne.init(agent="langgraph")  # start gascoigne`.
-- Say why, not what. If the code needs a "what" comment, rename or split instead.
-- Public API gets a doc comment in the language's own form (docstring, TSDoc, Go doc, Javadoc,
-  XML doc, rustdoc), starting with what the thing is or does.
 - Numbered steps in demos are comments above the line: `# 1. Start gascoigne`.
-- No commented-out code. No TODO without an issue or backlog entry.
-
-## Data
-- **Typed models, never ad-hoc dictionaries.** Wire bodies, settings, results and stats are
-  dataclasses / interfaces / structs / records, with serialization attributes where needed.
-  A `dict` / `map` / `Dictionary` is for genuinely dynamic keys only.
-- Use named constants for protocol numbers, timeouts and thresholds.
-- Prefer enums or small types over magic strings for states.
-
-## Structure
-- Early returns; keep the happy path flat. At most two levels of nesting.
-- Small functions that do one thing. A function that needs a section comment wants splitting.
-- Three similar lines beat a premature abstraction.
-- Names are short and exact; wide scopes get full words.
 
 ## Errors
 - The SDK never throws into the host app: catch at the boundary, return the input unchanged,
   log at debug. Warn once per process for configuration problems (missing CLI, wrong protocol).
-- Do not swallow errors silently elsewhere; wrap with context.
 
 ## Demos
 - **One tree: `demos/<language>/<framework>/<mode>`**, mode being `wrap`, `proxy`, `auto` or
@@ -55,7 +38,5 @@ Applies to every language in this repo. Readability first: if a reader has to pa
 - Secrets come from the environment (`.env`, git-ignored), never from code.
 
 ## Tests
-- Behavior, not implementation. Stub the server with the language's standard HTTP test tools,
-  no mocking frameworks beyond what the ecosystem expects.
 - Every SDK keeps the same cases: missing CLI warns once and passes through, kill switch,
   optimize through server, unknown protocol bypasses, five failures open the breaker, wrapper.
