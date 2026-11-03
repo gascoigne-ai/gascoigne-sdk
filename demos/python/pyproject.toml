@@ -1,7 +1,7 @@
 [project]
 name = "gascoigne-demos"
 version = "0.0.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = ["gascoigne", "rich>=13", "python-dotenv>=1"]
 
 [project.optional-dependencies]
@@ -27,7 +27,7 @@ conflicts = [[
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
