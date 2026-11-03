@@ -16,16 +16,16 @@ importers:
         version: link:../../typescript/packages/sdk
       '@langchain/core':
         specifier: ^1.0.0
-        version: 1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
+        version: 1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
       '@langchain/openai':
         specifier: ^1.0.0
-        version: 1.6.2(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))(undici@7.30.0)(ws@8.22.0)
+        version: 1.6.2(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))(undici@7.30.1)(ws@8.22.0)
       '@mastra/core':
         specifier: latest
         version: 1.76.0(ai@7.0.139(zod@4.6.7))(zod@4.6.7)
       '@openai/agents':
         specifier: latest
-        version: 0.20.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7)
+        version: 0.20.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7)
       '@openrouter/ai-sdk-provider':
         specifier: latest
         version: 3.1.0(ai@7.0.139(zod@4.6.7))(zod@4.6.7)
@@ -37,10 +37,10 @@ importers:
         version: 3.3.6
       langchain:
         specifier: ^1.0.0
-        version: 1.5.16(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
+        version: 1.5.16(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
       openai:
         specifier: latest
-        version: 7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7)
+        version: 7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7)
       zod:
         specifier: ^4.0.0
         version: 4.6.7
@@ -828,6 +828,9 @@ packages:
   jose@6.2.12:
     resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
 
+  jose@6.2.15:
+    resolution: {integrity: sha512-qdF6ewcZARtef63fJ9AKKZPgxw+t7USH6HLXYcD4CrdmSvDp79rpJSPFEKc90QBeGS63u1KQtN2MZQHC0yDIzA==}
+
   jpeg-js@0.4.4:
     resolution: {integrity: sha512-WZzeDOEtTOBK4Mdsar0IqEU5sMr3vSV2RqkAIzUEV2BHnUfKGyswWFPFwK5EeDo93K3FohSHbLAjj0s1Wzd+dg==}
 
@@ -1110,9 +1113,9 @@ packages:
   quansync@0.2.11:
     resolution: {integrity: sha512-AifT7QEbW9Nri4tAwR5M/uzpBuqfZf+zwaEM/QkzEjj7NBuFD2rBuy0K3dE+8wltbezDV7JMA0WfnCPYRSYbXA==}
 
-  re2js@2.8.6:
-    resolution: {integrity: sha512-xLgQil4kIUCrAzVk9fRSkxkFNwmygLFjVxXrLc65aE1F0+Zsb8rxumFBy4XKyvgMCTL6kilDq3EZ0piE2dP/Dg==}
-    engines: {node: '>=18.0.0'}
+  re2js@2.9.1:
+    resolution: {integrity: sha512-JIT3bEEUZTOR2YS1walNEIfH4cF/cQeZcBUFq7ldqO6lR6g0X5CBq/S8rsa9omzZcsNf8qc36jCkWpKKtncrZg==}
+    engines: {node: '>=20.0.0'}
 
   remark-gfm@4.0.1:
     resolution: {integrity: sha512-1quofZ2RQ9EWdeN34S79+KExV1764+wCUGop5CPL1WGdD0ocPpu91lzPGbwWMECpEpd42kJGQwzRfyov9j4yNg==}
@@ -1173,8 +1176,8 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
-  undici@7.30.0:
-    resolution: {integrity: sha512-dkrQXeHSaoamnItlYbmzG0wFYrM0ZwDxCIg0A7aKjTyyhh9svRzCNFEzV+Vm05/yehjCzjDZ31KXfGEjYSztDQ==}
+  undici@7.30.1:
+    resolution: {integrity: sha512-03KrMbjIFDWQR5RNPrSw3bd1r12JpyFQl9/yxjUbJtqkjmllqC5lFjZh6ujeuJCKr8EOQvRW872Oy/az+nLYxg==}
     engines: {node: '>=20.18.1'}
 
   unicorn-magic@0.3.0:
@@ -1247,7 +1250,7 @@ snapshots:
 
   '@a2a-js/sdk@1.0.1':
     dependencies:
-      jose: 6.2.12
+      jose: 6.2.15
       uuid: 11.1.1
 
   '@ai-sdk/gateway@4.0.112(zod@4.6.7)':
@@ -1270,7 +1273,7 @@ snapshots:
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.1.1
-      undici: 7.30.0
+      undici: 7.30.1
       zod: 4.6.7
 
   '@ai-sdk/provider-utils@5.0.59(zod@4.6.7)':
@@ -1279,7 +1282,7 @@ snapshots:
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.1.1
-      undici: 7.30.0
+      undici: 7.30.1
       zod: 4.6.7
 
   '@ai-sdk/provider@2.0.3':
@@ -1480,12 +1483,12 @@ snapshots:
   '@koromix/koffi-win32-x64@3.3.6':
     optional: true
 
-  '@langchain/core@1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)':
+  '@langchain/core@1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)':
     dependencies:
       '@cfworker/json-schema': 4.1.1
       '@standard-schema/spec': 1.1.0
       js-tiktoken: 1.0.21
-      langsmith: 0.10.13(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
+      langsmith: 0.10.13(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
       mustache: 4.2.0
       p-queue: 6.6.2
       zod: 4.6.7
@@ -1496,23 +1499,23 @@ snapshots:
       - openai
       - ws
 
-  '@langchain/langgraph-checkpoint@1.2.0(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))':
+  '@langchain/langgraph-checkpoint@1.2.0(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))':
     dependencies:
-      '@langchain/core': 1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
+      '@langchain/core': 1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
 
-  '@langchain/langgraph-sdk@1.12.4(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))':
+  '@langchain/langgraph-sdk@1.12.4(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))':
     dependencies:
-      '@langchain/core': 1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
+      '@langchain/core': 1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
       '@langchain/protocol': 0.0.19
       '@types/json-schema': 7.0.15
       p-queue: 9.3.5
       p-retry: 7.1.1
 
-  '@langchain/langgraph@1.5.0(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))(zod@4.6.7)':
+  '@langchain/langgraph@1.5.0(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))(zod@4.6.7)':
     dependencies:
-      '@langchain/core': 1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
-      '@langchain/langgraph-checkpoint': 1.2.0(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))
-      '@langchain/langgraph-sdk': 1.12.4(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))
+      '@langchain/core': 1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
+      '@langchain/langgraph-checkpoint': 1.2.0(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))
+      '@langchain/langgraph-sdk': 1.12.4(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))
       '@langchain/protocol': 0.0.19
       '@standard-schema/spec': 1.1.0
       zod: 4.6.7
@@ -1520,11 +1523,11 @@ snapshots:
       - react
       - react-dom
 
-  '@langchain/openai@1.6.2(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))(undici@7.30.0)(ws@8.22.0)':
+  '@langchain/openai@1.6.2(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))(undici@7.30.1)(ws@8.22.0)':
     dependencies:
-      '@langchain/core': 1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
+      '@langchain/core': 1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
       js-tiktoken: 1.0.21
-      openai: 7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7)
+      openai: 7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7)
       zod: 4.6.7
     transitivePeerDependencies:
       - '@aws-sdk/credential-provider-node'
@@ -1570,7 +1573,7 @@ snapshots:
       p-retry: 7.1.1
       picomatch: 4.0.7
       posthog-node: 5.56.0
-      re2js: 2.8.6
+      re2js: 2.9.1
       ws: 8.22.0
       xxhash-wasm: 1.1.0
       zod: 4.6.7
@@ -1615,11 +1618,11 @@ snapshots:
       zod: 4.6.7
     optional: true
 
-  '@openai/agents-core@0.20.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7)':
+  '@openai/agents-core@0.20.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7)':
     dependencies:
       '@standard-schema/spec': 1.1.0
       debug: 4.4.3
-      openai: 7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7)
+      openai: 7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7)
     optionalDependencies:
       '@modelcontextprotocol/client': 2.3.1
       zod: 4.6.7
@@ -1631,10 +1634,10 @@ snapshots:
       - undici
       - ws
 
-  '@openai/agents-openai@0.20.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7)':
+  '@openai/agents-openai@0.20.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7)':
     dependencies:
-      '@openai/agents-core': 0.20.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7)
-      openai: 7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7)
+      '@openai/agents-core': 0.20.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7)
+      openai: 7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7)
       zod: 4.6.7
     transitivePeerDependencies:
       - '@aws-sdk/credential-provider-node'
@@ -1644,9 +1647,9 @@ snapshots:
       - undici
       - ws
 
-  '@openai/agents-realtime@0.20.0(undici@7.30.0)(zod@4.6.7)':
+  '@openai/agents-realtime@0.20.0(undici@7.30.1)(zod@4.6.7)':
     dependencies:
-      '@openai/agents-core': 0.20.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7)
+      '@openai/agents-core': 0.20.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7)
       '@types/ws': 8.18.2
       ws: 8.22.0
       zod: 4.6.7
@@ -1659,12 +1662,12 @@ snapshots:
       - undici
       - utf-8-validate
 
-  '@openai/agents@0.20.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7)':
+  '@openai/agents@0.20.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7)':
     dependencies:
-      '@openai/agents-core': 0.20.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7)
-      '@openai/agents-openai': 0.20.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7)
-      '@openai/agents-realtime': 0.20.0(undici@7.30.0)(zod@4.6.7)
-      openai: 7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7)
+      '@openai/agents-core': 0.20.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7)
+      '@openai/agents-openai': 0.20.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7)
+      '@openai/agents-realtime': 0.20.0(undici@7.30.1)(zod@4.6.7)
+      openai: 7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7)
       zod: 4.6.7
     transitivePeerDependencies:
       - '@aws-sdk/credential-provider-node'
@@ -1921,7 +1924,10 @@ snapshots:
 
   isexe@2.0.0: {}
 
-  jose@6.2.12: {}
+  jose@6.2.12:
+    optional: true
+
+  jose@6.2.15: {}
 
   jpeg-js@0.4.4: {}
 
@@ -1963,12 +1969,12 @@ snapshots:
       '@koromix/koffi-win32-ia32': 3.3.6
       '@koromix/koffi-win32-x64': 3.3.6
 
-  langchain@1.5.16(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0):
+  langchain@1.5.16(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0):
     dependencies:
-      '@langchain/core': 1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
-      '@langchain/langgraph': 1.5.0(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))(zod@4.6.7)
-      '@langchain/langgraph-checkpoint': 1.2.0(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))
-      langsmith: 0.10.13(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
+      '@langchain/core': 1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
+      '@langchain/langgraph': 1.5.0(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))(zod@4.6.7)
+      '@langchain/langgraph-checkpoint': 1.2.0(@langchain/core@1.2.17(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0))
+      langsmith: 0.10.13(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0)
       zod: 4.6.7
     transitivePeerDependencies:
       - '@opentelemetry/api'
@@ -1979,11 +1985,11 @@ snapshots:
       - react-dom
       - ws
 
-  langsmith@0.10.13(openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0):
+  langsmith@0.10.13(openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7))(ws@8.22.0):
     dependencies:
       p-queue: 6.6.2
     optionalDependencies:
-      openai: 7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7)
+      openai: 7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7)
       ws: 8.22.0
 
   longest-streak@3.1.0: {}
@@ -2302,9 +2308,9 @@ snapshots:
       path-key: 4.0.0
       unicorn-magic: 0.3.0
 
-  openai@7.32.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7):
+  openai@7.32.0(undici@7.30.1)(ws@8.22.0)(zod@4.6.7):
     optionalDependencies:
-      undici: 7.30.0
+      undici: 7.30.1
       ws: 8.22.0
       zod: 4.6.7
 
@@ -2355,7 +2361,7 @@ snapshots:
 
   quansync@0.2.11: {}
 
-  re2js@2.8.6: {}
+  re2js@2.9.1: {}
 
   remark-gfm@4.0.1:
     dependencies:
@@ -2418,7 +2424,7 @@ snapshots:
 
   undici-types@6.21.0: {}
 
-  undici@7.30.0: {}
+  undici@7.30.1: {}
 
   unicorn-magic@0.3.0: {}
 
