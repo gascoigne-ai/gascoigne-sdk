@@ -33,7 +33,7 @@
     <dependency>
       <groupId>net.java.dev.jna</groupId>
       <artifactId>jna</artifactId>
-      <version>5.15.0</version>
+      <version>5.19.1</version>
       <!-- Only for embedded mode (spec/native.md); the server variant needs no native access. -->
       <optional>true</optional>
     </dependency>
