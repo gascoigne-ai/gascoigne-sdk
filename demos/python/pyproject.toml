@@ -18,6 +18,8 @@ auto-mcp = ["langchain-mcp-adapters", "langgraph>=1.0", "langchain>=1.0", "langc
 gascoigne = { path = "../../python/gascoigne", editable = true }
 
 [tool.uv]
+# Patched releases of two transitive packages that older frameworks cap below the fix.
+override-dependencies = ["filelock>=4.2.1", "opentelemetry-api>=1.45.1"]
 # One framework per run: their pins conflict (`uv run --extra langgraph ...`).
 conflicts = [[
   { extra = "langchain" }, { extra = "langgraph" }, { extra = "agno" }, { extra = "adk" },
