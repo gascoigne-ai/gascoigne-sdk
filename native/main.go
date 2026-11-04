@@ -77,6 +77,31 @@ func gascoigne_raw(h C.uint64_t, id *C.char, err **C.char) *C.char {
 	return ret(s, e, err)
 }
 
+// gascoigne_stats totals the recorded runs per group: a query JSON document in, a JSON list out.
+//
+//export gascoigne_stats
+func gascoigne_stats(h C.uint64_t, query *C.char, err **C.char) *C.char {
+	s, e := core.Stats(core.Handle(h), C.GoString(query))
+	return ret(s, e, err)
+}
+
+// gascoigne_recent lists the recorded runs, newest first: a query JSON document in, a JSON
+// list out.
+//
+//export gascoigne_recent
+func gascoigne_recent(h C.uint64_t, query *C.char, err **C.char) *C.char {
+	s, e := core.Recent(core.Handle(h), C.GoString(query))
+	return ret(s, e, err)
+}
+
+// gascoigne_costs prices the tokens saved: a query JSON document in, a JSON object out.
+//
+//export gascoigne_costs
+func gascoigne_costs(h C.uint64_t, query *C.char, err **C.char) *C.char {
+	s, e := core.Costs(core.Handle(h), C.GoString(query))
+	return ret(s, e, err)
+}
+
 // gascoigne_close stops an engine and releases its handle.
 //
 //export gascoigne_close

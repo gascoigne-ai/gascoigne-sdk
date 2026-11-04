@@ -9,7 +9,7 @@ import { accessSync, constants } from "node:fs";
 import { delimiter, join } from "node:path";
 import { Native, type Settings } from "./native.js";
 
-export { NativeError, type Settings } from "./native.js";
+export { NativeError, type Price, type Pricing, type Settings } from "./native.js";
 
 const PROTO = 1;
 const DEFAULT_ADDR = "127.0.0.1:7878";
@@ -52,6 +52,154 @@ interface OptimizeResponse {
 export interface Stats {
   rawTokens: number;
   outTokens: number;
+}
+
+/** The recorded runs of one group, summed. */
+export interface Total {
+  group: string;
+  runs: number;
+  optimized: number;
+  failed: number;
+  rawTokens: number;
+  outTokens: number;
+  saved: number;
+  /** RFC 3339, empty when unknown. */
+  first: string;
+  last: string;
+}
+
+/** One recorded optimization. */
+export interface Run {
+  id: number;
+  /** RFC 3339. */
+  time: string;
+  session: string;
+  agent: string;
+  model: string;
+  command: string;
+  route: string;
+  optimizers: string[];
+  rawTokens: number;
+  outTokens: number;
+  durationNs: number;
+  rawId: string;
+  outcome: string;
+  reason: string;
+}
+
+/** The tokens saved, priced for one model. `source` is built-in, static, json, api or script. */
+export interface ModelCost {
+  model: string;
+  source: string;
+  assumed: boolean;
+  tokenizer: string;
+  tokens: number;
+  modelTokens: number;
+  firstReadUsd: number;
+  inContextUsd: number;
+}
+
+/**
+ * What the tokens saved are worth: an estimate from list prices or the prices configured for
+ * gascoigne, not what anyone is billed. With `billing === "subscription"` there are no dollars.
+ */
+export interface Costs {
+  billing: string;
+  firstReadUsd: number;
+  inContextUsd: number;
+  rereads: number;
+  savings: ModelCost[];
+  unpriced: string[];
+}
+
+/** Filters for `totals` and `costs`; empty ones match everything. `by` is route (default),
+ * session, family, optimizer, command, outcome, agent, model, day, week or month (totals only). */
+export interface TotalsQuery {
+  by?: string;
+  session?: string;
+  agent?: string;
+  model?: string;
+  since?: Date;
+}
+
+/**
+ * Filters for `runs`, newest first. `before` is a run id, to page; `limit` defaults to 50, at
+ * most 1000.
+ */
+export interface RunsQuery {
+  session?: string;
+  agent?: string;
+  model?: string;
+  since?: Date;
+  before?: number;
+  limit?: number;
+}
+
+type Wire = Record<string, unknown>;
+
+const str = (v: unknown): string => (typeof v === "string" ? v : "");
+const num = (v: unknown): number => (typeof v === "number" ? v : 0);
+const list = (v: unknown): Wire[] => (Array.isArray(v) ? (v as Wire[]) : []);
+
+const toTotal = (d: Wire): Total => ({
+  group: str(d.group),
+  runs: num(d.runs),
+  optimized: num(d.optimized),
+  failed: num(d.failed),
+  rawTokens: num(d.raw_tokens),
+  outTokens: num(d.out_tokens),
+  saved: num(d.saved),
+  first: str(d.first),
+  last: str(d.last),
+});
+
+const toRun = (d: Wire): Run => ({
+  id: num(d.id),
+  time: str(d.time),
+  session: str(d.session),
+  agent: str(d.agent),
+  model: str(d.model),
+  command: str(d.command),
+  route: str(d.route),
+  optimizers: list(d.optimizers).map(String),
+  rawTokens: num(d.raw_tokens),
+  outTokens: num(d.out_tokens),
+  durationNs: num(d.duration_ns),
+  rawId: str(d.raw_id),
+  outcome: str(d.outcome),
+  reason: str(d.reason),
+});
+
+const toModelCost = (d: Wire): ModelCost => ({
+  model: str(d.model),
+  source: str(d.source),
+  assumed: d.assumed === true,
+  tokenizer: str(d.tokenizer),
+  tokens: num(d.tokens),
+  modelTokens: num(d.model_tokens),
+  firstReadUsd: num(d.first_read_usd),
+  inContextUsd: num(d.in_context_usd),
+});
+
+const toCosts = (d: Wire): Costs => ({
+  billing: str(d.billing),
+  firstReadUsd: num(d.first_read_usd),
+  inContextUsd: num(d.in_context_usd),
+  rereads: num(d.rereads),
+  savings: list(d.savings).map(toModelCost),
+  unpriced: list(d.unpriced).map(String),
+});
+
+const emptyCosts = (): Costs => toCosts({});
+
+/** The query fields that are set, in the wire's names, as strings. */
+function query(fields: Record<string, string | number | Date | undefined>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(fields)) {
+    if (value === undefined || value === "" || value === 0) continue;
+    out[key] = value instanceof Date ? value.toISOString().replace(/\.\d+Z$/, "Z") : String(value);
+  }
+  return out;
 }
 
 export interface Options {
@@ -291,6 +439,74 @@ export class Runtime {
     }
   }
 
+  /**
+   * The recorded runs summed per group. Reads never throw and never trip the optimize breaker:
+   * on any failure (bypass, server down, a bad query) the answer is an empty list.
+   */
+  async totals(q: TotalsQuery = {}): Promise<Total[]> {
+    const params = query({
+      by: q.by,
+      session: q.session,
+      agent: q.agent,
+      model: q.model,
+      since: q.since,
+    });
+    return list(
+      await this.read("/sdk/v1/stats", params, (p) => this.native?.stats(JSON.stringify(p))),
+    ).map(toTotal);
+  }
+
+  /** The recorded runs, newest first; empty on any failure. */
+  async runs(q: RunsQuery = {}): Promise<Run[]> {
+    const params = query({
+      session: q.session,
+      agent: q.agent,
+      model: q.model,
+      since: q.since,
+      before: q.before,
+      limit: q.limit,
+    });
+    const native = (p: Record<string, string>) =>
+      this.native?.recent(
+        JSON.stringify({
+          ...p,
+          ...(p.before ? { before: Number(p.before) } : {}),
+          ...(p.limit ? { limit: Number(p.limit) } : {}),
+        }),
+      );
+    return list(await this.read("/sdk/v1/recent", params, native)).map(toRun);
+  }
+
+  /** What the tokens saved are worth, an estimate not a bill; an empty `Costs` on any failure. */
+  async costs(q: Omit<TotalsQuery, "by"> = {}): Promise<Costs> {
+    const params = query({ session: q.session, agent: q.agent, model: q.model, since: q.since });
+    const data = await this.read("/sdk/v1/costs", params, (p) =>
+      this.native?.costs(JSON.stringify(p)),
+    );
+    return data && !Array.isArray(data) ? toCosts(data as Wire) : emptyCosts();
+  }
+
+  /** A ledger read: the parsed JSON, or undefined on any failure. */
+  private async read(
+    path: string,
+    params: Record<string, string>,
+    viaNative: (params: Record<string, string>) => Promise<string> | undefined,
+  ): Promise<unknown> {
+    if (!(await this.ready())) return undefined;
+    try {
+      if (this.native) {
+        const out = viaNative(params) ?? Promise.reject(new Error("no engine"));
+        return JSON.parse(await out);
+      }
+      const r = await fetch(`${this.baseUrl}${path}?${new URLSearchParams(params)}`, {
+        signal: AbortSignal.timeout(this.opts.timeoutMs ?? 5000),
+      });
+      return r.ok ? await r.json() : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   /** Base URL that routes an LLM client through the gascoigne proxy, or undefined in bypass. */
   async proxyBaseUrl(
     api: "openai" | "anthropic" | "gemini" = "openai",
@@ -328,3 +544,6 @@ export const wrapTool = <A extends unknown[], R>(fn: (...a: A) => R | Promise<R>
 export const raw = (id: string) => current.raw(id);
 export const proxyBaseUrl = (api?: "openai" | "anthropic" | "gemini") => current.proxyBaseUrl(api);
 export const stats = () => current.stats();
+export const totals = (q?: TotalsQuery) => current.totals(q);
+export const runs = (q?: RunsQuery) => current.runs(q);
+export const costs = (q?: Omit<TotalsQuery, "by">) => current.costs(q);

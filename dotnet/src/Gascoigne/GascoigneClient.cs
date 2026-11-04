@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.RegularExpressions;
 using System.Text.Json;
@@ -378,6 +379,110 @@ public sealed class GascoigneClient : IDisposable
         }
 
         return api == "openai" ? $"{BaseUrl}/v1" : BaseUrl;
+    }
+
+    /// <summary>
+    /// The recorded runs summed per group. Reads never throw and never trip the optimize breaker:
+    /// on any failure (bypass, server down, a bad query) the answer is empty.
+    /// </summary>
+    public async Task<IReadOnlyList<Total>> TotalsAsync(
+        TotalsQuery? query = null, CancellationToken ct = default)
+    {
+        query ??= new TotalsQuery();
+        var fields = new Dictionary<string, string?>
+        {
+            ["by"] = query.By,
+            ["session"] = query.Session,
+            ["agent"] = query.Agent,
+            ["model"] = query.Model,
+            ["since"] = Rfc3339(query.Since),
+        };
+        return await ReadAsync<List<Total>>("/sdk/v1/stats", fields, (e, q) => e.Stats(q), ct)
+            ?? [];
+    }
+
+    /// <summary>The recorded runs, newest first; empty on any failure.</summary>
+    public async Task<IReadOnlyList<Run>> RunsAsync(
+        RunsQuery? query = null, CancellationToken ct = default)
+    {
+        query ??= new RunsQuery();
+        var fields = new Dictionary<string, string?>
+        {
+            ["session"] = query.Session,
+            ["agent"] = query.Agent,
+            ["model"] = query.Model,
+            ["since"] = Rfc3339(query.Since),
+            ["before"] = query.Before > 0
+                ? query.Before.ToString(CultureInfo.InvariantCulture) : null,
+            ["limit"] = query.Limit > 0 ? query.Limit.ToString(CultureInfo.InvariantCulture) : null,
+        };
+        return await ReadAsync<List<Run>>("/sdk/v1/recent", fields, (e, q) => e.Recent(q), ct)
+            ?? [];
+    }
+
+    /// <summary>
+    /// What the tokens saved are worth, an estimate not a bill; empty (Billing "") on any failure.
+    /// <see cref="TotalsQuery.By"/> is ignored.
+    /// </summary>
+    public async Task<Costs> CostsAsync(TotalsQuery? query = null, CancellationToken ct = default)
+    {
+        query ??= new TotalsQuery();
+        var fields = new Dictionary<string, string?>
+        {
+            ["session"] = query.Session,
+            ["agent"] = query.Agent,
+            ["model"] = query.Model,
+            ["since"] = Rfc3339(query.Since),
+        };
+        return await ReadAsync<Costs>("/sdk/v1/costs", fields, (e, q) => e.Costs(q), ct)
+            ?? new Costs();
+    }
+
+    private static string? Rfc3339(DateTimeOffset? when) =>
+        when?.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+
+    /// <summary>A ledger read through the engine or the server; null on any failure.</summary>
+    private async Task<T?> ReadAsync<T>(
+        string path,
+        Dictionary<string, string?> fields,
+        Func<NativeEngine, string, string> viaEngine,
+        CancellationToken ct)
+        where T : class
+    {
+        var set = fields
+            .Where(f => !string.IsNullOrEmpty(f.Value))
+            .ToDictionary(f => f.Key, f => f.Value!);
+        try
+        {
+            if (!await ReadyAsync(ct))
+            {
+                return null;
+            }
+
+            if (_engine is { } engine)
+            {
+                var doc = set.ToDictionary(
+                    f => f.Key,
+                    f => f.Key is "before" or "limit"
+                        ? (object)long.Parse(f.Value, CultureInfo.InvariantCulture)
+                        : f.Value);
+                var answer = viaEngine(engine, JsonSerializer.Serialize(doc));
+                return JsonSerializer.Deserialize<T>(answer);
+            }
+
+            var query = string.Join("&", set.Select(f => Uri.EscapeDataString(f.Key) + "="
+                + Uri.EscapeDataString(f.Value).Replace("%20", "+", StringComparison.Ordinal)));
+            var url = $"{BaseUrl}{path}{(query.Length > 0 ? "?" + query : "")}";
+            using var response = await _http.GetAsync(url, ct);
+            return response.IsSuccessStatusCode
+                ? JsonSerializer.Deserialize<T>(await response.Content.ReadAsStringAsync(ct))
+                : null;
+        }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException
+            or JsonException or InvalidOperationException or FormatException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Tokens (estimated) before and after, summed over this client's calls.</summary>

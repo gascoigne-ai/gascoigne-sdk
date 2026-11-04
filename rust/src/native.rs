@@ -2,9 +2,10 @@
 //! spec/native.md). Without the feature `Native::open` always reports it is missing.
 
 use serde::Serialize;
+use std::collections::BTreeMap;
 
 #[cfg(feature = "native")]
-const ABI: i32 = 1;
+const ABI: i32 = 2;
 
 /// Configuration the library merges over its defaults and the user's file.
 #[derive(Default, Serialize, Clone)]
@@ -23,6 +24,47 @@ pub struct Settings {
     pub ignore_user_file: bool,
     #[serde(skip_serializing_if = "is_zero")]
     pub timeout_ms: u32,
+    /// `file` (default: the configured sqlite file) or `memory` (private to this process).
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub ledger: String,
+    /// Prices behind [`crate::Runtime::costs`].
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pricing: Option<Pricing>,
+}
+
+/// Where dollar figures come from for the embedded engine. Prices are held per process, not per
+/// runtime.
+#[derive(Default, Serialize, Clone)]
+pub struct Pricing {
+    /// `api` (default) or `subscription`: a flat plan has no dollars.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub billing: String,
+    /// Static prices by model id.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub prices: BTreeMap<String, Price>,
+    /// A price sheet (JSON) read once when the engine opens.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub file: String,
+}
+
+/// One model's price, dollars per million tokens.
+#[derive(Default, Serialize, Clone)]
+pub struct Price {
+    /// Required.
+    #[serde(rename = "in")]
+    pub input: f64,
+    /// Required.
+    #[serde(rename = "out")]
+    pub output: f64,
+    /// Defaults to `input` when `None`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_read: Option<f64>,
+    /// Defaults to `input` when `None`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_write: Option<f64>,
+    /// `o200k` (default), `claude`, `claude-legacy` or `gemini`.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub tokenizer: String,
 }
 
 // serde passes a reference.
@@ -205,6 +247,21 @@ mod enabled {
         pub fn raw(&self, id: &str) -> Result<String, String> {
             self.call(b"gascoigne_raw", id)
         }
+
+        /// Totals per group, as the library's JSON list.
+        pub fn stats(&self, query: &str) -> Result<String, String> {
+            self.call(b"gascoigne_stats", query)
+        }
+
+        /// Recorded runs, as the library's JSON list.
+        pub fn recent(&self, query: &str) -> Result<String, String> {
+            self.call(b"gascoigne_recent", query)
+        }
+
+        /// The tokens saved, priced, as the library's JSON object.
+        pub fn costs(&self, query: &str) -> Result<String, String> {
+            self.call(b"gascoigne_costs", query)
+        }
     }
 
     impl Drop for Native {
@@ -242,6 +299,18 @@ impl Native {
     }
 
     pub fn raw(&self, _id: &str) -> Result<String, String> {
+        Err("built without the `native` feature".into())
+    }
+
+    pub fn stats(&self, _query: &str) -> Result<String, String> {
+        Err("built without the `native` feature".into())
+    }
+
+    pub fn recent(&self, _query: &str) -> Result<String, String> {
+        Err("built without the `native` feature".into())
+    }
+
+    pub fn costs(&self, _query: &str) -> Result<String, String> {
         Err("built without the `native` feature".into())
     }
 }

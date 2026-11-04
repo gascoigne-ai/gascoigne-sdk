@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gascoigne-ai/gascoigne-cli/inproc"
 	"github.com/gascoigne-ai/gascoigne-sdk/go/gascoigne"
 )
 
@@ -28,5 +29,44 @@ func TestGoSDKRunsEmbedded(t *testing.T) {
 	}
 	if got := rt.Raw(ctx, res.RawID); got != raw {
 		t.Fatalf("Raw returned %d bytes, want the original", len(got))
+	}
+}
+
+func TestGoSDKReadsTheEmbeddedMemoryLedger(t *testing.T) {
+	t.Setenv("GASCOIGNE_LEDGER", "")
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	ctx := context.Background()
+	in, out := 3.0, 15.0
+	b, err := New(ctx, Options{
+		IgnoreUserFile: true, Ledger: "memory",
+		Pricing: &inproc.Pricing{Prices: map[string]inproc.Price{
+			"acme-large": {In: &in, Out: &out, Tokenizer: "claude"},
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rt := gascoigne.New(gascoigne.Options{Backend: b, Agent: "sdk", Session: "s1"})
+	defer rt.Close()
+	raw := strings.Repeat("INFO request served path=/api/items status=200 ms=12\n", 400)
+	attrs := gascoigne.Attrs{Tool: "bash", Cmd: "tail app.log", Model: "acme-large"}
+	rt.OptimizeResult(ctx, raw, attrs)
+
+	totals, err := rt.Totals(ctx, gascoigne.TotalsQuery{By: "agent"})
+	if err != nil || len(totals) != 1 || totals[0].Group != "sdk" || totals[0].Runs != 1 ||
+		totals[0].Saved <= 0 {
+		t.Fatalf("totals = %+v, %v", totals, err)
+	}
+	runs, err := rt.Runs(ctx, gascoigne.RunsQuery{Session: "s1"})
+	if err != nil || len(runs) != 1 || runs[0].RawID == "" || runs[0].Outcome != "optimized" {
+		t.Fatalf("runs = %+v, %v", runs, err)
+	}
+	costs, err := rt.Costs(ctx, gascoigne.TotalsQuery{})
+	if err != nil || costs.InContextUSD <= 0 || len(costs.Savings) != 1 ||
+		costs.Savings[0].Source != "static" {
+		t.Fatalf("costs = %+v, %v", costs, err)
+	}
+	if _, err := rt.Totals(ctx, gascoigne.TotalsQuery{By: "nonsense"}); err == nil {
+		t.Fatal("unknown grouping accepted")
 	}
 }

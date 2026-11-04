@@ -45,4 +45,47 @@ func (b backend) Optimize(ctx context.Context, r gascoigne.Request) (gascoigne.R
 
 func (b backend) Raw(ctx context.Context, id string) (string, error) { return b.eng.Raw(ctx, id) }
 
+// Totals, Runs and Costs make the backend a gascoigne.LedgerBackend. The engine's types carry
+// the same fields as the SDK's, so they convert directly.
+
+func (b backend) Totals(ctx context.Context, q gascoigne.TotalsQuery) ([]gascoigne.Total, error) {
+	rows, err := b.eng.Stats(ctx, inproc.StatsQuery{
+		By: q.By, Session: q.Session, Agent: q.Agent, Model: q.Model, Since: q.Since,
+	})
+	out := make([]gascoigne.Total, len(rows))
+	for i, row := range rows {
+		out[i] = gascoigne.Total(row)
+	}
+	return out, err
+}
+
+func (b backend) Runs(ctx context.Context, q gascoigne.RunsQuery) ([]gascoigne.Run, error) {
+	rows, err := b.eng.Recent(ctx, inproc.RecentQuery{
+		Session: q.Session, Agent: q.Agent, Model: q.Model, Since: q.Since,
+		Before: q.Before, Limit: q.Limit,
+	})
+	out := make([]gascoigne.Run, len(rows))
+	for i, row := range rows {
+		out[i] = gascoigne.Run(row)
+	}
+	return out, err
+}
+
+func (b backend) Costs(ctx context.Context, q gascoigne.TotalsQuery) (gascoigne.Costs, error) {
+	costs, err := b.eng.Costs(ctx, inproc.StatsQuery{
+		Session: q.Session, Agent: q.Agent, Model: q.Model, Since: q.Since,
+	})
+	out := gascoigne.Costs{
+		Billing: costs.Billing, FirstReadUSD: costs.FirstReadUSD, InContextUSD: costs.InContextUSD,
+		Rereads: costs.Rereads, Unpriced: costs.Unpriced,
+		Savings: make([]gascoigne.ModelCost, len(costs.Savings)),
+	}
+	for i, saving := range costs.Savings {
+		out.Savings[i] = gascoigne.ModelCost(saving)
+	}
+	return out, err
+}
+
+var _ gascoigne.LedgerBackend = backend{}
+
 func (b backend) Close() error { return b.eng.Close(context.Background()) }

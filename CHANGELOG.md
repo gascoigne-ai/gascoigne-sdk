@@ -8,6 +8,23 @@ changed for you, in plain words.
 
 ## [Unreleased]
 
+### In short
+
+- **Read your savings from your app.** Every SDK has `totals`, `runs` and `costs`: tokens saved per agent, model,
+  day or session, the recent runs with the id of each original, and what the saved tokens are worth.
+- **A ledger that lives in memory.** `ledger: memory` keeps the record in your process: no file, nothing left
+  behind. The default stays the sqlite file the CLI and its dashboard share.
+- **Your prices, or no dollars.** `pricing` sets prices per model, or `billing: subscription` for a flat plan, where
+  no dollar figure is shown. Needs `gascoigne-cli` with the same release in proxy mode.
+
+### Added
+
+- `gascoigne_stats`, `gascoigne_recent`, `gascoigne_costs` in the native library, and `GET /sdk/v1/stats`,
+  `/recent`, `/costs` in the protocol. Native ABI is now 2: an SDK and a library of different ABIs refuse each other.
+- Options `ledger` (`file` or `memory`) and `pricing` (`billing`, `prices`, `file`) for the embedded engine.
+- `totals`, `runs`, `costs` in the Go, Python, TypeScript, Java, .NET and Rust SDKs. They never raise and never
+  open the optimize breaker; on any failure they return nothing.
+
 ## [0.9.1] - 2026-11-02
 
 The first release of the 0.9 line that shipped: native mode in every SDK, native demos for every framework, and a

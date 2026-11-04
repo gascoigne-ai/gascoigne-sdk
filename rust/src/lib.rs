@@ -5,7 +5,7 @@
 
 mod native;
 
-pub use native::Settings;
+pub use native::{Price, Pricing, Settings};
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -56,6 +56,103 @@ impl Attrs {
 pub struct Stats {
     pub raw_tokens: u64,
     pub out_tokens: u64,
+}
+
+/// The recorded runs of one group, summed.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(default)]
+pub struct Total {
+    pub group: String,
+    pub runs: u64,
+    pub optimized: u64,
+    pub failed: u64,
+    pub raw_tokens: u64,
+    pub out_tokens: u64,
+    pub saved: i64,
+    /// RFC 3339, empty when unknown.
+    pub first: String,
+    pub last: String,
+}
+
+/// One recorded optimization.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(default)]
+pub struct Run {
+    /// Run id, for paging with [`RunsQuery::before`].
+    pub id: u64,
+    /// RFC 3339.
+    pub time: String,
+    pub session: String,
+    pub agent: String,
+    pub model: String,
+    pub command: String,
+    pub route: String,
+    pub optimizers: Vec<String>,
+    pub raw_tokens: u64,
+    pub out_tokens: u64,
+    pub duration_ns: i64,
+    /// Id of the stored original, see [`Runtime::raw`].
+    pub raw_id: String,
+    /// `optimized`, `unchanged`, `bypassed`, `rerequested` or `error`.
+    pub outcome: String,
+    pub reason: String,
+}
+
+/// The tokens saved, priced for one model.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
+#[serde(default)]
+pub struct ModelCost {
+    pub model: String,
+    /// Where the price comes from: `built-in`, `static`, `json`, `api` or `script`.
+    pub source: String,
+    pub assumed: bool,
+    pub tokenizer: String,
+    /// Saved, in gascoigne's estimate units.
+    pub tokens: u64,
+    /// Saved, in the model's own tokens.
+    pub model_tokens: u64,
+    pub first_read_usd: f64,
+    pub in_context_usd: f64,
+}
+
+/// What the tokens saved are worth: an estimate from list prices or the prices configured for
+/// gascoigne, not what anyone is billed. With `billing == "subscription"` there are no dollars.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
+#[serde(default)]
+pub struct Costs {
+    pub billing: String,
+    pub first_read_usd: f64,
+    pub in_context_usd: f64,
+    pub rereads: f64,
+    pub savings: Vec<ModelCost>,
+    pub unpriced: Vec<String>,
+}
+
+/// Filters for [`Runtime::totals`] and [`Runtime::costs`]; empty ones match everything.
+#[derive(Debug, Clone, Default)]
+pub struct TotalsQuery {
+    /// `route` (default), `session`, `family`, `optimizer`, `command`, `outcome`, `agent`,
+    /// `model`, `day`, `week` or `month`; totals only.
+    pub by: String,
+    pub session: String,
+    pub agent: String,
+    pub model: String,
+    /// Only runs from this RFC 3339 time on.
+    pub since: String,
+}
+
+/// Filters for [`Runtime::runs`], newest first.
+#[derive(Debug, Clone, Default)]
+pub struct RunsQuery {
+    pub session: String,
+    pub agent: String,
+    pub model: String,
+    /// Only runs from this RFC 3339 time on.
+    pub since: String,
+    /// A run id: only older runs come back, to page; 0 for none.
+    pub before: u64,
+    /// At most this many; 0 means 50, the most is 1000.
+    pub limit: u32,
 }
 
 /// Body of `POST /sdk/v1/optimize`.
@@ -335,6 +432,85 @@ impl Runtime {
             .ok()
             .and_then(|response| response.into_string().ok())
             .unwrap_or_default()
+    }
+
+    /// The recorded runs summed per group. Reads never panic and never trip the optimize breaker:
+    /// on any failure (bypass, server down, a bad query) the answer is empty.
+    pub fn totals(&self, query: &TotalsQuery) -> Vec<Total> {
+        let fields = [
+            ("by", query.by.clone()),
+            ("session", query.session.clone()),
+            ("agent", query.agent.clone()),
+            ("model", query.model.clone()),
+            ("since", query.since.clone()),
+        ];
+        self.read("/sdk/v1/stats", &fields, native::Native::stats)
+            .unwrap_or_default()
+    }
+
+    /// The recorded runs, newest first; empty on any failure.
+    pub fn runs(&self, query: &RunsQuery) -> Vec<Run> {
+        let number = |n: u64| if n > 0 { n.to_string() } else { String::new() };
+        let fields = [
+            ("session", query.session.clone()),
+            ("agent", query.agent.clone()),
+            ("model", query.model.clone()),
+            ("since", query.since.clone()),
+            ("before", number(query.before)),
+            ("limit", number(u64::from(query.limit))),
+        ];
+        self.read("/sdk/v1/recent", &fields, native::Native::recent)
+            .unwrap_or_default()
+    }
+
+    /// What the tokens saved are worth, an estimate not a bill; empty (`billing == ""`) on any
+    /// failure. `by` of the query is ignored.
+    pub fn costs(&self, query: &TotalsQuery) -> Costs {
+        let fields = [
+            ("session", query.session.clone()),
+            ("agent", query.agent.clone()),
+            ("model", query.model.clone()),
+            ("since", query.since.clone()),
+        ];
+        self.read("/sdk/v1/costs", &fields, native::Native::costs)
+            .unwrap_or_default()
+    }
+
+    /// A ledger read through the engine or the server; `None` on any failure.
+    fn read<T: serde::de::DeserializeOwned>(
+        &self,
+        path: &str,
+        fields: &[(&str, String)],
+        via_engine: fn(&native::Native, &str) -> std::result::Result<String, String>,
+    ) -> Option<T> {
+        if !self.ready() {
+            return None;
+        }
+        let set: Vec<(&str, &String)> = fields
+            .iter()
+            .filter(|(_, value)| !value.is_empty())
+            .map(|(key, value)| (*key, value))
+            .collect();
+        if let Some(native) = &self.state().native {
+            // The library takes before and limit as numbers.
+            let doc: serde_json::Map<String, serde_json::Value> = set
+                .iter()
+                .map(|(key, value)| {
+                    let json = match (*key, value.parse::<u64>()) {
+                        ("before" | "limit", Ok(n)) => serde_json::Value::from(n),
+                        _ => serde_json::Value::from((*value).clone()),
+                    };
+                    ((*key).to_string(), json)
+                })
+                .collect();
+            let body = via_engine(native, &serde_json::Value::Object(doc).to_string()).ok()?;
+            return serde_json::from_str(&body).ok();
+        }
+        let mut request = ureq::get(&format!("{}{path}", base_url())).timeout(self.timeout);
+        for (key, value) in set {
+            request = request.query(key, value);
+        }
+        request.call().ok()?.into_json().ok()
     }
 
     /// Base URL that routes an LLM client through the gascoigne proxy, or `None` in bypass.

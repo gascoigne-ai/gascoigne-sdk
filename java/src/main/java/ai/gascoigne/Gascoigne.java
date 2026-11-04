@@ -1,16 +1,23 @@
 package ai.gascoigne;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -410,6 +417,98 @@ public final class Gascoigne {
             return Optional.empty();
         }
         return Optional.of("openai".equals(api) ? baseUrl() + "/v1" : baseUrl());
+    }
+
+    /**
+     * The recorded runs summed per group. Reads never throw and never trip the optimize breaker:
+     * on any failure (bypass, server down, a bad query) the answer is empty.
+     */
+    public List<Total> totals(TotalsQuery query) {
+        Map<String, String> params = new LinkedHashMap<>();
+        put(params, "by", query.by());
+        put(params, "session", query.session());
+        put(params, "agent", query.agent());
+        put(params, "model", query.model());
+        put(params, "since", seconds(query.since()));
+        return read("/sdk/v1/stats", params, new TypeReference<List<Total>>() {}, List.of(),
+                engineQuery -> engine.stats(engineQuery));
+    }
+
+    /** The recorded runs, newest first; empty on any failure. */
+    public List<Run> runs(RunsQuery query) {
+        Map<String, String> params = new LinkedHashMap<>();
+        put(params, "session", query.session());
+        put(params, "agent", query.agent());
+        put(params, "model", query.model());
+        put(params, "since", seconds(query.since()));
+        put(params, "before", query.before() > 0 ? Long.toString(query.before()) : null);
+        put(params, "limit", query.limit() > 0 ? Integer.toString(query.limit()) : null);
+        return read("/sdk/v1/recent", params, new TypeReference<List<Run>>() {}, List.of(),
+                engineQuery -> engine.recent(engineQuery));
+    }
+
+    /**
+     * What the tokens saved are worth, an estimate not a bill; empty (billing "") on any failure.
+     * {@code by} of the query is ignored.
+     */
+    public Costs costs(TotalsQuery query) {
+        Map<String, String> params = new LinkedHashMap<>();
+        put(params, "session", query.session());
+        put(params, "agent", query.agent());
+        put(params, "model", query.model());
+        put(params, "since", seconds(query.since()));
+        return read("/sdk/v1/costs", params, new TypeReference<Costs>() {}, Costs.EMPTY,
+                engineQuery -> engine.costs(engineQuery));
+    }
+
+    /** RFC 3339 to the second, null for none. */
+    private static String seconds(java.time.Instant when) {
+        return when == null ? null : when.truncatedTo(ChronoUnit.SECONDS).toString();
+    }
+
+    private static void put(Map<String, String> params, String key, String value) {
+        if (value != null && !value.isEmpty()) {
+            params.put(key, value);
+        }
+    }
+
+    /** A ledger read through the engine or the server; the fallback on any failure. */
+    private <T> T read(String path, Map<String, String> params, TypeReference<T> type, T fallback,
+            java.util.function.Function<String, String> viaEngine) {
+        if (!ready()) {
+            return fallback;
+        }
+        try {
+            if (engine != null) {
+                Map<String, Object> doc = new LinkedHashMap<>(params);
+                for (String number : List.of("before", "limit")) {
+                    if (params.containsKey(number)) {
+                        doc.put(number, Long.parseLong(params.get(number)));
+                    }
+                }
+                return JSON.readValue(viaEngine.apply(JSON.writeValueAsString(doc)), type);
+            }
+            StringBuilder url = new StringBuilder(baseUrl()).append(path);
+            String separator = "?";
+            for (var entry : params.entrySet()) {
+                url.append(separator)
+                        .append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8))
+                        .append('=')
+                        .append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
+                separator = "&";
+            }
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url.toString()))
+                    .timeout(settings.timeout)
+                    .build();
+            HttpResponse<String> response =
+                    http.send(request, HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() == 200 ? JSON.readValue(response.body(), type) : fallback;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return fallback;
+        } catch (IOException | RuntimeException e) {
+            return fallback;
+        }
     }
 
     /** Tokens (estimated) before and after, summed over this instance's calls. */

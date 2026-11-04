@@ -12,11 +12,12 @@ import subprocess
 import threading
 import time
 from collections.abc import Callable
+from datetime import datetime, timezone
 from typing import Any, TypeVar, cast
 
 import httpx
 
-from gascoigne.models import OptimizeRequest, Result, Stats
+from gascoigne.models import Costs, OptimizeRequest, Result, Run, Stats, Total
 from gascoigne.native import Native, NativeError, Settings
 from gascoigne.retrieve import select
 
@@ -218,6 +219,87 @@ class Runtime:
             self._failed(e)
             return ""
 
+    def totals(
+        self,
+        *,
+        by: str = "",
+        session: str = "",
+        agent: str = "",
+        model: str = "",
+        since: datetime | None = None,
+    ) -> list[Total]:
+        """The recorded runs summed per group: ``by`` is route, session, family, optimizer,
+        command, outcome, agent, model, day, week or month (default route). Empty filters match
+        everything. Reads never raise and never trip the optimize breaker: on any failure
+        (bypass, server down, a bad query) the answer is an empty list.
+        """
+        query = _query(by=by, session=session, agent=agent, model=model, since=_rfc3339(since))
+        try:
+            if self._native:
+                return self._native.totals(query)
+            return [Total.from_json(d) for d in self._read("/sdk/v1/stats", query)]
+        except (httpx.HTTPError, NativeError, ValueError, KeyError, TypeError) as e:
+            log.debug("gascoigne totals failed: %s", e)
+            return []
+
+    def runs(
+        self,
+        *,
+        session: str = "",
+        agent: str = "",
+        model: str = "",
+        since: datetime | None = None,
+        before: int = 0,
+        limit: int = 0,
+    ) -> list[Run]:
+        """The recorded runs, newest first. ``before`` is a run id (only older runs come back,
+        to page); ``limit`` defaults to 50, at most 1000. Never raises: empty on failure.
+        """
+        query = _query(session=session, agent=agent, model=model, since=_rfc3339(since))
+        if before > 0:
+            query["before"] = str(before)
+        if limit > 0:
+            query["limit"] = str(limit)
+        try:
+            if self._native:
+                native_query: dict[str, str | int] = {**query}
+                for key in ("before", "limit"):
+                    if key in query:
+                        native_query[key] = int(query[key])
+                return self._native.runs(native_query)
+            return [Run.from_json(d) for d in self._read("/sdk/v1/recent", query)]
+        except (httpx.HTTPError, NativeError, ValueError, KeyError, TypeError) as e:
+            log.debug("gascoigne runs failed: %s", e)
+            return []
+
+    def costs(
+        self,
+        *,
+        session: str = "",
+        agent: str = "",
+        model: str = "",
+        since: datetime | None = None,
+    ) -> Costs:
+        """What the tokens saved are worth: an estimate, not a bill. ``billing`` says "api" or
+        "subscription" (no dollars). Never raises: an empty `Costs` on failure.
+        """
+        query = _query(session=session, agent=agent, model=model, since=_rfc3339(since))
+        try:
+            if self._native:
+                return self._native.costs(query)
+            return Costs.from_json(self._read("/sdk/v1/costs", query))
+        except (httpx.HTTPError, NativeError, ValueError, KeyError, TypeError) as e:
+            log.debug("gascoigne costs failed: %s", e)
+            return Costs()
+
+    def _read(self, path: str, query: dict[str, str]) -> Any:
+        """GET a ledger route; raises on any failure, for the callers above to absorb."""
+        if not self.ready():
+            raise ValueError("gascoigne is not available")
+        response = self._http().get(path, params=query)
+        response.raise_for_status()
+        return response.json()
+
     def retrieve(self, raw_id: str, grep: str = "", lines: str = "") -> str:
         """Part of an original, for a model that needs what was folded.
 
@@ -259,6 +341,19 @@ class Runtime:
             return self.optimize(out, tool=tool) if isinstance(out, str) else out
 
         return cast(F, wrapper)
+
+
+def _query(**fields: str) -> dict[str, str]:
+    """The non-empty fields."""
+    return {k: v for k, v in fields.items() if v}
+
+
+def _rfc3339(when: datetime | None) -> str:
+    if when is None:
+        return ""
+    if when.tzinfo is None:
+        when = when.astimezone()
+    return when.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 _default: Runtime | None = None
@@ -316,6 +411,18 @@ def wrap_tool(fn: F, *, name: str = "") -> F:
 
 def stats() -> Stats:
     return default().stats()
+
+
+def totals(**query: Any) -> list[Total]:
+    return default().totals(**query)
+
+
+def runs(**query: Any) -> list[Run]:
+    return default().runs(**query)
+
+
+def costs(**query: Any) -> Costs:
+    return default().costs(**query)
 
 
 def retrieve_original(raw_id: str, grep: str = "", lines: str = "") -> str:
