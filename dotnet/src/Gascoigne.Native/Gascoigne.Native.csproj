@@ -7,7 +7,7 @@
          -p:Rid; the default is this machine for the tests. -->
     <Rid Condition="'$(Rid)' == ''">linux-x64</Rid>
     <PackageId>Gascoigne.Native.$(Rid)</PackageId>
-    <Version>0.9.1</Version>
+    <Version>0.10.0</Version>
     <Description>The gascoigne engine as a bundled native library, for the Gascoigne SDK's native mode</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/gascoigne-ai/gascoigne-sdk</RepositoryUrl>

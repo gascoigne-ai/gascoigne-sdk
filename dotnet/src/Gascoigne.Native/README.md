@@ -5,7 +5,7 @@ and no CLI. Reference the package of your system next to `Gascoigne` (`Gascoigne
 `linux-arm64`, `osx-x64`, `osx-arm64`, `win-x64`), for example with a condition, and select it:
 
 ```xml
-<PackageReference Include="Gascoigne.Native.linux-x64" Version="0.9.1"
+<PackageReference Include="Gascoigne.Native.linux-x64" Version="0.10.0"
                   Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
 ```
 

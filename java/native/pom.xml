@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>ai.gascoigne</groupId>
   <artifactId>gascoigne-native</artifactId>
-  <version>0.9.1</version>
+  <version>0.10.0</version>
   <packaging>pom</packaging>
   <name>gascoigne-native</name>
   <description>The gascoigne engine as a bundled native library, for the gascoigne SDK's native mode</description>

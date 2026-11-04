@@ -6,7 +6,7 @@ version of the CLI release they were built with. Each ecosystem has its own tag 
 `java-v`, `dotnet-v`, `rust-v`, `native-v`, see `docs/releasing.md`). Each release starts with "In short": what
 changed for you, in plain words.
 
-## [Unreleased]
+## [0.10.0] - 2026-11-05
 
 ### In short
 

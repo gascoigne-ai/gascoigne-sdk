@@ -10,7 +10,7 @@ to the GitHub Actions workflow that built the files, through Sigstore.
 ## Check a file against its provenance
 
 ```sh
-gh attestation verify gascoigne-0.9.1-py3-none-any.whl --repo gascoigne-ai/gascoigne-sdk
+gh attestation verify gascoigne-0.10.0-py3-none-any.whl --repo gascoigne-ai/gascoigne-sdk
 ```
 
 It prints the workflow, commit and tag the file came from, and fails if the file was changed or was
