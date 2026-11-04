@@ -16,8 +16,7 @@ func ledgerServer(t *testing.T, status int) *string {
 	var last string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		last = r.URL.Path + "?" + r.URL.RawQuery
-		switch r.URL.Path {
-		case "/sdk/v1/health":
+		if r.URL.Path == "/sdk/v1/health" {
 			_ = json.NewEncoder(w).Encode(map[string]any{"version": "t", "proto": 1})
 			return
 		}
