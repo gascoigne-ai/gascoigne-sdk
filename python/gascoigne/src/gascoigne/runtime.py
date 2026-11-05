@@ -17,7 +17,7 @@ from typing import Any, TypeVar, cast
 
 import httpx
 
-from gascoigne.models import Costs, OptimizeRequest, Result, Run, Stats, Total
+from gascoigne.models import OptimizeRequest, Result, Run, Stats, Total
 from gascoigne.native import Native, NativeError, Settings
 from gascoigne.retrieve import select
 
@@ -272,26 +272,6 @@ class Runtime:
             log.debug("gascoigne runs failed: %s", e)
             return []
 
-    def costs(
-        self,
-        *,
-        session: str = "",
-        agent: str = "",
-        model: str = "",
-        since: datetime | None = None,
-    ) -> Costs:
-        """What the tokens saved are worth: an estimate, not a bill. ``billing`` says "api" or
-        "subscription" (no dollars). Never raises: an empty `Costs` on failure.
-        """
-        query = _query(session=session, agent=agent, model=model, since=_rfc3339(since))
-        try:
-            if self._native:
-                return self._native.costs(query)
-            return Costs.from_json(self._read("/sdk/v1/costs", query))
-        except (httpx.HTTPError, NativeError, ValueError, KeyError, TypeError) as e:
-            log.debug("gascoigne costs failed: %s", e)
-            return Costs()
-
     def _read(self, path: str, query: dict[str, str]) -> Any:
         """GET a ledger route; raises on any failure, for the callers above to absorb."""
         if not self.ready():
@@ -419,10 +399,6 @@ def totals(**query: Any) -> list[Total]:
 
 def runs(**query: Any) -> list[Run]:
     return default().runs(**query)
-
-
-def costs(**query: Any) -> Costs:
-    return default().costs(**query)
 
 
 def retrieve_original(raw_id: str, grep: str = "", lines: str = "") -> str:

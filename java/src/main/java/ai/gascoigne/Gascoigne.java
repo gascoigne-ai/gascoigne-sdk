@@ -447,20 +447,6 @@ public final class Gascoigne {
                 engineQuery -> engine.recent(engineQuery));
     }
 
-    /**
-     * What the tokens saved are worth, an estimate not a bill; empty (billing "") on any failure.
-     * {@code by} of the query is ignored.
-     */
-    public Costs costs(TotalsQuery query) {
-        Map<String, String> params = new LinkedHashMap<>();
-        put(params, "session", query.session());
-        put(params, "agent", query.agent());
-        put(params, "model", query.model());
-        put(params, "since", seconds(query.since()));
-        return read("/sdk/v1/costs", params, new TypeReference<Costs>() {}, Costs.EMPTY,
-                engineQuery -> engine.costs(engineQuery));
-    }
-
     /** RFC 3339 to the second, null for none. */
     private static String seconds(java.time.Instant when) {
         return when == null ? null : when.truncatedTo(ChronoUnit.SECONDS).toString();

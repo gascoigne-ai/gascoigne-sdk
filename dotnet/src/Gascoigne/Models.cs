@@ -94,69 +94,14 @@ public sealed record Run
     [JsonPropertyName("reason")] public string Reason { get; init; } = "";
 }
 
-/// <summary>The tokens saved, priced for one model.</summary>
-public sealed record ModelCost
-{
-    /// <inheritdoc/>
-    [JsonPropertyName("model")] public string Model { get; init; } = "";
-
-    /// <summary>Where the price comes from: built-in, static, json, api or script.</summary>
-    [JsonPropertyName("source")] public string Source { get; init; } = "";
-
-    /// <inheritdoc/>
-    [JsonPropertyName("assumed")] public bool Assumed { get; init; }
-
-    /// <inheritdoc/>
-    [JsonPropertyName("tokenizer")] public string Tokenizer { get; init; } = "";
-
-    /// <summary>Saved, in gascoigne's estimate units.</summary>
-    [JsonPropertyName("tokens")] public long Tokens { get; init; }
-
-    /// <summary>Saved, in the model's own tokens.</summary>
-    [JsonPropertyName("model_tokens")] public long ModelTokens { get; init; }
-
-    /// <inheritdoc/>
-    [JsonPropertyName("first_read_usd")] public double FirstReadUsd { get; init; }
-
-    /// <inheritdoc/>
-    [JsonPropertyName("in_context_usd")] public double InContextUsd { get; init; }
-}
-
 /// <summary>
-/// What the tokens saved are worth: an estimate from list prices or the prices configured for
-/// gascoigne, not what anyone is billed. With <see cref="Billing"/> "subscription" there are no
-/// dollars.
-/// </summary>
-public sealed record Costs
-{
-    /// <inheritdoc/>
-    [JsonPropertyName("billing")] public string Billing { get; init; } = "";
-
-    /// <inheritdoc/>
-    [JsonPropertyName("first_read_usd")] public double FirstReadUsd { get; init; }
-
-    /// <inheritdoc/>
-    [JsonPropertyName("in_context_usd")] public double InContextUsd { get; init; }
-
-    /// <inheritdoc/>
-    [JsonPropertyName("rereads")] public double Rereads { get; init; }
-
-    /// <inheritdoc/>
-    [JsonPropertyName("savings")] public IReadOnlyList<ModelCost> Savings { get; init; } = [];
-
-    /// <inheritdoc/>
-    [JsonPropertyName("unpriced")] public IReadOnlyList<string> Unpriced { get; init; } = [];
-}
-
-/// <summary>
-/// Filters for <see cref="GascoigneClient.TotalsAsync"/> and
-/// <see cref="GascoigneClient.CostsAsync"/>; unset ones match everything.
+/// Filters for <see cref="GascoigneClient.TotalsAsync"/>; unset ones match everything.
 /// </summary>
 public sealed record TotalsQuery
 {
     /// <summary>
     /// route (default), session, family, optimizer, command, outcome, agent, model, day, week or
-    /// month; totals only.
+    /// month.
     /// </summary>
     public string? By { get; init; }
 

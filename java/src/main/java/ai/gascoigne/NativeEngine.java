@@ -22,7 +22,7 @@ import java.util.zip.GZIPInputStream;
  * class without JNA on the class path throws {@link LinkageError}, which {@link Gascoigne} catches.
  */
 final class NativeEngine implements AutoCloseable {
-    private static final int ABI = 2;
+    private static final int ABI = 3;
     private static final ObjectMapper JSON = new ObjectMapper();
 
     /** The C ABI of spec/native.md. */
@@ -38,8 +38,6 @@ final class NativeEngine implements AutoCloseable {
         Pointer gascoigne_stats(long handle, String query, PointerByReference err);
 
         Pointer gascoigne_recent(long handle, String query, PointerByReference err);
-
-        Pointer gascoigne_costs(long handle, String query, PointerByReference err);
 
         void gascoigne_close(long handle);
 
@@ -245,12 +243,6 @@ final class NativeEngine implements AutoCloseable {
     String recent(String queryJson) {
         PointerByReference err = new PointerByReference();
         return result(lib.gascoigne_recent(handle, queryJson, err), err);
-    }
-
-    /** The tokens saved, priced, as the library's JSON object. */
-    String costs(String queryJson) {
-        PointerByReference err = new PointerByReference();
-        return result(lib.gascoigne_costs(handle, queryJson, err), err);
     }
 
     private String result(Pointer out, PointerByReference err) {

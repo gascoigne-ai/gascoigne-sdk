@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gascoigne-ai/gascoigne-cli/inproc"
 	"github.com/gascoigne-ai/gascoigne-sdk/go/gascoigne"
 )
 
@@ -36,12 +35,8 @@ func TestGoSDKReadsTheEmbeddedMemoryLedger(t *testing.T) {
 	t.Setenv("GASCOIGNE_LEDGER", "")
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	ctx := context.Background()
-	in, out := 3.0, 15.0
 	b, err := New(ctx, Options{
 		IgnoreUserFile: true, Ledger: "memory",
-		Pricing: &inproc.Pricing{Prices: map[string]inproc.Price{
-			"acme-large": {In: &in, Out: &out, Tokenizer: "claude"},
-		}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -60,11 +55,6 @@ func TestGoSDKReadsTheEmbeddedMemoryLedger(t *testing.T) {
 	runs, err := rt.Runs(ctx, gascoigne.RunsQuery{Session: "s1"})
 	if err != nil || len(runs) != 1 || runs[0].RawID == "" || runs[0].Outcome != "optimized" {
 		t.Fatalf("runs = %+v, %v", runs, err)
-	}
-	costs, err := rt.Costs(ctx, gascoigne.TotalsQuery{})
-	if err != nil || costs.InContextUSD <= 0 || len(costs.Savings) != 1 ||
-		costs.Savings[0].Source != "static" {
-		t.Fatalf("costs = %+v, %v", costs, err)
 	}
 	if _, err := rt.Totals(ctx, gascoigne.TotalsQuery{By: "nonsense"}); err == nil {
 		t.Fatal("unknown grouping accepted")

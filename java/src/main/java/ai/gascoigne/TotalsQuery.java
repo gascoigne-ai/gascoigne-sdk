@@ -3,11 +3,11 @@ package ai.gascoigne;
 import java.time.Instant;
 
 /**
- * Filters for {@link Gascoigne#totals} and {@link Gascoigne#costs}. Null or empty fields match
+ * Filters for {@link Gascoigne#totals}. Null or empty fields match
  * everything.
  *
  * @param by route (default), session, family, optimizer, command, outcome, agent, model, day,
- *     week or month; totals only
+ *     week or month
  * @param since only runs from this time on
  */
 public record TotalsQuery(String by, String session, String agent, String model, Instant since) {

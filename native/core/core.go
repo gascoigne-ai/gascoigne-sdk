@@ -18,9 +18,9 @@ import (
 
 // ABIVersion changes when an exported function or a JSON field changes incompatibly.
 //
-// 2 adds gascoigne_stats, gascoigne_recent and gascoigne_costs and the ledger and pricing options;
-// everything of version 1 behaves as before.
-const ABIVersion = 2
+// 2 added gascoigne_stats, gascoigne_recent, gascoigne_costs and the ledger and pricing options.
+// 3 drops costs and pricing: the SDK counts tokens only. Version 1 functions behave as before.
+const ABIVersion = 3
 
 // defaultTimeout bounds every optimize call unless Options say otherwise.
 const defaultTimeout = 5 * time.Second
@@ -45,22 +45,7 @@ type Options struct {
 	// Ledger is "file" (default: the configured sqlite file) or "memory" (private to this
 	// process, gone at close).
 	Ledger string `json:"ledger,omitempty"`
-	// Pricing sets the prices behind Costs.
-	Pricing *Pricing `json:"pricing,omitempty"`
 }
-
-// Pricing is where dollar figures come from; see inproc.Pricing. Prices are held per process.
-type Pricing struct {
-	// Billing is "api" (default) or "subscription" (no dollars).
-	Billing string `json:"billing,omitempty"`
-	// Prices are static prices by model id, dollars per million tokens.
-	Prices map[string]Price `json:"prices,omitempty"`
-	// File is a price sheet read once at Open.
-	File string `json:"file,omitempty"`
-}
-
-// Price is one model's price: in and out are required.
-type Price = inproc.Price
 
 // Request is the JSON document of one optimize call.
 type Request struct {
@@ -98,11 +83,6 @@ func (o Options) engine() inproc.Options {
 	engine := inproc.Options{
 		Config: o.Config, Set: o.Set, Only: o.Only, Disable: o.Disable,
 		IgnoreUserFile: o.IgnoreUserFile, Ledger: o.Ledger,
-	}
-	if o.Pricing != nil {
-		engine.Pricing = &inproc.Pricing{
-			Billing: o.Pricing.Billing, Prices: o.Pricing.Prices, File: o.Pricing.File,
-		}
 	}
 	return engine
 }
@@ -184,7 +164,7 @@ func Raw(h Handle, id string) (text string, err error) {
 	return e.eng.Raw(ctx, id)
 }
 
-// StatsQuery is the JSON document of Stats and Costs; every field is optional.
+// StatsQuery is the JSON document of Stats; every field is optional.
 type StatsQuery struct {
 	By      string `json:"by,omitempty"`
 	Session string `json:"session,omitempty"`
@@ -272,33 +252,6 @@ func Recent(h Handle, queryJSON string) (out string, err error) {
 		Before: q.Before, Limit: q.Limit,
 	})
 	return encodeList(rows, err)
-}
-
-// Costs prices the tokens saved, as a JSON object. Under a subscription it has no dollars.
-func Costs(h Handle, queryJSON string) (out string, err error) {
-	defer recoverTo(&err)
-	e, err := lookup(h)
-	if err != nil {
-		return "", err
-	}
-	q, err := query[StatsQuery](queryJSON)
-	if err != nil {
-		return "", err
-	}
-	since, err := parseSince(q.Since)
-	if err != nil {
-		return "", err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
-	defer cancel()
-	costs, err := e.eng.Costs(ctx, inproc.StatsQuery{
-		Session: q.Session, Agent: q.Agent, Model: q.Model, Since: since,
-	})
-	if err != nil {
-		return "", err
-	}
-	body, err := json.Marshal(costs)
-	return string(body), err
 }
 
 // encodeList marshals rows as a JSON list, [] when empty.

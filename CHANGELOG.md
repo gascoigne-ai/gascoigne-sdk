@@ -6,6 +6,20 @@ version of the CLI release they were built with. Each ecosystem has its own tag 
 `java-v`, `dotnet-v`, `rust-v`, `native-v`, see `docs/releasing.md`). Each release starts with "In short": what
 changed for you, in plain words.
 
+## [Unreleased]
+
+### In short
+
+- **The SDK counts tokens, not dollars.** `costs` and the `pricing` option of 0.10.0 are gone: every SDK keeps
+  `totals` and `runs` (tokens saved, recent runs) and the in-memory `ledger` option. Prices and billing live in the
+  gascoigne CLI (`gascoigne pricing`, the Costs page), not in the SDK.
+
+### Removed
+
+- `costs` (`Costs`, `CostsAsync`, `costs()`) in every SDK, `gascoigne_costs` in the native library, `GET /sdk/v1/costs`,
+  and the `pricing` option (`Pricing`, `Price`). Native ABI is now 3, so an SDK and a library from 0.10.0 refuse each
+  other instead of failing on a missing function: update both together.
+
 ## [0.10.0] - 2026-11-05
 
 ### In short

@@ -14,27 +14,7 @@ import { gunzipSync } from "node:zlib";
 
 /** The embedded variant: libgascoigne called through koffi (see spec/native.md). */
 
-const ABI = 2;
-
-/** One model's price, dollars per million tokens; `in` and `out` are required. */
-export interface Price {
-  in: number;
-  out: number;
-  cacheRead?: number;
-  cacheWrite?: number;
-  /** o200k (default), claude, claude-legacy or gemini. */
-  tokenizer?: string;
-}
-
-/** Where dollar figures come from. Prices are held per process, not per runtime. */
-export interface Pricing {
-  /** "api" (default) or "subscription": a flat plan has no dollars. */
-  billing?: "auto" | "api" | "subscription";
-  /** Static prices by model id. */
-  prices?: Record<string, Price>;
-  /** A price sheet (JSON) read once when the engine opens. */
-  file?: string;
-}
+const ABI = 3;
 
 /** Configuration the library merges over its defaults and the user's file. */
 export interface Settings {
@@ -48,7 +28,6 @@ export interface Settings {
   timeoutMs?: number;
   /** "file" (default: the configured sqlite file) or "memory" (private to this process). */
   ledger?: "file" | "memory";
-  pricing?: Pricing;
 }
 
 /** What the library reads: the wire names of the options document. */
@@ -60,14 +39,6 @@ interface Wire {
   ignore_user_file?: boolean;
   timeout_ms?: number;
   ledger?: string;
-  pricing?: {
-    billing?: string;
-    prices?: Record<
-      string,
-      { in: number; out: number; cache_read?: number; cache_write?: number; tokenizer?: string }
-    >;
-    file?: string;
-  };
 }
 
 type Fn = {
@@ -188,24 +159,6 @@ function wire(s: Settings): Wire {
     ignore_user_file: s.ignoreUserFile,
     timeout_ms: s.timeoutMs,
     ledger: s.ledger,
-    pricing: s.pricing && {
-      billing: s.pricing.billing,
-      file: s.pricing.file,
-      prices:
-        s.pricing.prices &&
-        Object.fromEntries(
-          Object.entries(s.pricing.prices).map(([id, p]) => [
-            id,
-            {
-              in: p.in,
-              out: p.out,
-              cache_read: p.cacheRead,
-              cache_write: p.cacheWrite,
-              tokenizer: p.tokenizer,
-            },
-          ]),
-        ),
-    },
   };
 }
 
@@ -241,7 +194,6 @@ export class Native {
       raw: lib.func("void *gascoigne_raw(uint64_t h, const char *id, _Out_ void **err)"),
       stats: lib.func("void *gascoigne_stats(uint64_t h, const char *query, _Out_ void **err)"),
       recent: lib.func("void *gascoigne_recent(uint64_t h, const char *query, _Out_ void **err)"),
-      costs: lib.func("void *gascoigne_costs(uint64_t h, const char *query, _Out_ void **err)"),
       close: lib.func("void gascoigne_close(uint64_t h)"),
       free: lib.func("void gascoigne_free(void *s)"),
     };
@@ -267,10 +219,7 @@ export class Native {
     return h;
   }
 
-  private call(
-    fn: "optimize" | "raw" | "stats" | "recent" | "costs",
-    arg: string,
-  ): Promise<string> {
+  private call(fn: "optimize" | "raw" | "stats" | "recent", arg: string): Promise<string> {
     const err = [null];
     return new Promise((resolve, reject) => {
       this.fns[fn].async(this.handle, arg, err, (e: Error | null, out: unknown) => {
@@ -297,11 +246,6 @@ export class Native {
   /** Recorded runs as the library's JSON list. */
   recent(queryJson: string): Promise<string> {
     return this.call("recent", queryJson);
-  }
-
-  /** The tokens saved, priced, as the library's JSON object. */
-  costs(queryJson: string): Promise<string> {
-    return this.call("costs", queryJson);
   }
 
   close(): void {
