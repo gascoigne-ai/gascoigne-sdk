@@ -77,13 +77,13 @@ search_logs = gascoigne.wrap_tool(search_logs)      # any tool function returnin
 
 Same surface in every language: `init`, `wrap_tool`, `optimize`, `raw`, `proxy_base_url`, `stats`
 and an `on_result` observer (contract: [`spec/protocol.md`](spec/protocol.md)). Every SDK carries
-the version of the CLI release it was built with (0.10.0).
+the version of the CLI release it was built with (0.11.0).
 
 | | Install | Hook |
 |---|---|---|
 | **Python** | [wheel or git](docs/install.md#python) | `gascoigne.wrap_tool(fn)`; LangChain tools: `gascoigne.ext.langchain.optimize_tools(tools)` |
 | **TypeScript** | [tarballs or GitHub Packages](docs/install.md#typescript) | `wrapTool(fn)`; Vercel AI SDK: `wrapTools(tools)` from `@gascoigne-ai/ai-sdk` |
-| **Go** | `go get github.com/gascoigne-ai/gascoigne-sdk/go@v0.10.0` ([notes](docs/install.md#go)) | `rt.WrapTool(tool)` or `gascoigne.WrapFunc(rt, name, fn)` |
+| **Go** | `go get github.com/gascoigne-ai/gascoigne-sdk/go@v0.11.0` ([notes](docs/install.md#go)) | `rt.WrapTool(tool)` or `gascoigne.WrapFunc(rt, name, fn)` |
 | **Java** | [GitHub Packages](docs/install.md#java) | `g.optimize(text, Attrs.tool(name))` in Spring AI / LangChain4j tools, or `g.wrapTool(name, fn)` |
 | **.NET** | [nupkg or GitHub Packages](docs/install.md#net) | `g.WrapTool(name, fn)` for Semantic Kernel and Microsoft.Extensions.AI tools |
 | **Rust** | [git tag](docs/install.md#rust) | `rt.wrap_tool(name, fn)` or `rt.optimize(text, &Attrs::tool(..))` |

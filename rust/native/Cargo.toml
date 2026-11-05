@@ -1,6 +1,6 @@
 [package]
 name = "gascoigne-native"
-version = "0.10.0"
+version = "0.11.0"
 edition = "2021"
 description = "The gascoigne engine as a bundled native library, for the gascoigne SDK's native mode"
 license = "Apache-2.0"

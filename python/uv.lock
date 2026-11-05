@@ -449,7 +449,7 @@ wheels = [
 
 [[package]]
 name = "gascoigne"
-version = "0.10.0"
+version = "0.11.0"
 source = { editable = "gascoigne" }
 dependencies = [
     { name = "httpx" },
@@ -460,7 +460,7 @@ requires-dist = [{ name = "httpx", specifier = ">=0.27" }]
 
 [[package]]
 name = "gascoigne-native"
-version = "0.10.0"
+version = "0.11.0"
 source = { editable = "gascoigne-native" }
 dependencies = [
     { name = "gascoigne" },

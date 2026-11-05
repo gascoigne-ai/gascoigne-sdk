@@ -21,6 +21,6 @@
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <gascoigne.version>0.10.0</gascoigne.version>
+    <gascoigne.version>0.11.0</gascoigne.version>
   </properties>
 </project>
