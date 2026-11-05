@@ -26,7 +26,7 @@ require (
 )
 
 // Local sibling checkout until the engine facade (package inproc) is tagged in gascoigne-cli.
-replace github.com/gascoigne-ai/gascoigne-cli => /home/lukaszb/Development/gascoigne/gascoigne-cli/master
+replace github.com/gascoigne-ai/gascoigne-cli => ../../../gascoigne-cli/master
 
 require (
 	github.com/gascoigne-ai/gascoigne-cli v0.0.0
