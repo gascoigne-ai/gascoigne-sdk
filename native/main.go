@@ -94,14 +94,6 @@ func gascoigne_recent(h C.uint64_t, query *C.char, err **C.char) *C.char {
 	return ret(s, e, err)
 }
 
-// gascoigne_costs prices the tokens saved: a query JSON document in, a JSON object out.
-//
-//export gascoigne_costs
-func gascoigne_costs(h C.uint64_t, query *C.char, err **C.char) *C.char {
-	s, e := core.Costs(core.Handle(h), C.GoString(query))
-	return ret(s, e, err)
-}
-
 // gascoigne_close stops an engine and releases its handle.
 //
 //export gascoigne_close

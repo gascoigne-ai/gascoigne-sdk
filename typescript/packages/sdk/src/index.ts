@@ -9,7 +9,7 @@ import { accessSync, constants } from "node:fs";
 import { delimiter, join } from "node:path";
 import { Native, type Settings } from "./native.js";
 
-export { NativeError, type Price, type Pricing, type Settings } from "./native.js";
+export { NativeError, type Settings } from "./native.js";
 
 const PROTO = 1;
 const DEFAULT_ADDR = "127.0.0.1:7878";
@@ -87,32 +87,7 @@ export interface Run {
   reason: string;
 }
 
-/** The tokens saved, priced for one model. `source` is built-in, static, json, api or script. */
-export interface ModelCost {
-  model: string;
-  source: string;
-  assumed: boolean;
-  tokenizer: string;
-  tokens: number;
-  modelTokens: number;
-  firstReadUsd: number;
-  inContextUsd: number;
-}
-
-/**
- * What the tokens saved are worth: an estimate from list prices or the prices configured for
- * gascoigne, not what anyone is billed. With `billing === "subscription"` there are no dollars.
- */
-export interface Costs {
-  billing: string;
-  firstReadUsd: number;
-  inContextUsd: number;
-  rereads: number;
-  savings: ModelCost[];
-  unpriced: string[];
-}
-
-/** Filters for `totals` and `costs`; empty ones match everything. `by` is route (default),
+/** Filters for `totals`; empty ones match everything. `by` is route (default),
  * session, family, optimizer, command, outcome, agent, model, day, week or month (totals only). */
 export interface TotalsQuery {
   by?: string;
@@ -169,28 +144,6 @@ const toRun = (d: Wire): Run => ({
   outcome: str(d.outcome),
   reason: str(d.reason),
 });
-
-const toModelCost = (d: Wire): ModelCost => ({
-  model: str(d.model),
-  source: str(d.source),
-  assumed: d.assumed === true,
-  tokenizer: str(d.tokenizer),
-  tokens: num(d.tokens),
-  modelTokens: num(d.model_tokens),
-  firstReadUsd: num(d.first_read_usd),
-  inContextUsd: num(d.in_context_usd),
-});
-
-const toCosts = (d: Wire): Costs => ({
-  billing: str(d.billing),
-  firstReadUsd: num(d.first_read_usd),
-  inContextUsd: num(d.in_context_usd),
-  rereads: num(d.rereads),
-  savings: list(d.savings).map(toModelCost),
-  unpriced: list(d.unpriced).map(String),
-});
-
-const emptyCosts = (): Costs => toCosts({});
 
 /** The query fields that are set, in the wire's names, as strings. */
 function query(fields: Record<string, string | number | Date | undefined>): Record<string, string> {
@@ -477,15 +430,6 @@ export class Runtime {
     return list(await this.read("/sdk/v1/recent", params, native)).map(toRun);
   }
 
-  /** What the tokens saved are worth, an estimate not a bill; an empty `Costs` on any failure. */
-  async costs(q: Omit<TotalsQuery, "by"> = {}): Promise<Costs> {
-    const params = query({ session: q.session, agent: q.agent, model: q.model, since: q.since });
-    const data = await this.read("/sdk/v1/costs", params, (p) =>
-      this.native?.costs(JSON.stringify(p)),
-    );
-    return data && !Array.isArray(data) ? toCosts(data as Wire) : emptyCosts();
-  }
-
   /** A ledger read: the parsed JSON, or undefined on any failure. */
   private async read(
     path: string,
@@ -546,4 +490,3 @@ export const proxyBaseUrl = (api?: "openai" | "anthropic" | "gemini") => current
 export const stats = () => current.stats();
 export const totals = (q?: TotalsQuery) => current.totals(q);
 export const runs = (q?: RunsQuery) => current.runs(q);
-export const costs = (q?: Omit<TotalsQuery, "by">) => current.costs(q);

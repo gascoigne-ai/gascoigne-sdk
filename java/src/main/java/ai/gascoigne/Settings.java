@@ -15,7 +15,6 @@ import java.util.List;
  * @param ignoreUserFile skips the user's config file
  * @param timeoutMs per-call bound inside the library, 0 for its default
  * @param ledger "file" (default: the configured sqlite file) or "memory" (private to this process)
- * @param pricing prices behind {@link Gascoigne#costs}
  */
 @JsonInclude(JsonInclude.Include.NON_DEFAULT)
 public record Settings(
@@ -25,31 +24,25 @@ public record Settings(
         @JsonProperty("disable") List<String> disable,
         @JsonProperty("ignore_user_file") boolean ignoreUserFile,
         @JsonProperty("timeout_ms") int timeoutMs,
-        @JsonProperty("ledger") String ledger,
-        @JsonProperty("pricing") Pricing pricing) {
+        @JsonProperty("ledger") String ledger) {
 
     /** Defaults only. */
     public static Settings defaults() {
-        return new Settings(null, null, null, null, false, 0, null, null);
+        return new Settings(null, null, null, null, false, 0, null);
     }
 
     /** These defaults with {@code yaml} laid over them. */
     public Settings withConfig(String yaml) {
-        return new Settings(yaml, set, only, disable, ignoreUserFile, timeoutMs, ledger, pricing);
+        return new Settings(yaml, set, only, disable, ignoreUserFile, timeoutMs, ledger);
     }
 
     /** These settings without the user's config file. */
     public Settings withoutUserFile() {
-        return new Settings(config, set, only, disable, true, timeoutMs, ledger, pricing);
+        return new Settings(config, set, only, disable, true, timeoutMs, ledger);
     }
 
     /** These settings with the ledger kept in "memory" (or "file", the default). */
     public Settings withLedger(String mode) {
-        return new Settings(config, set, only, disable, ignoreUserFile, timeoutMs, mode, pricing);
-    }
-
-    /** These settings with the prices behind {@link Gascoigne#costs}. */
-    public Settings withPricing(Pricing value) {
-        return new Settings(config, set, only, disable, ignoreUserFile, timeoutMs, ledger, value);
+        return new Settings(config, set, only, disable, ignoreUserFile, timeoutMs, mode);
     }
 }

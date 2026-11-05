@@ -72,7 +72,7 @@ On failure a function returns `NULL` (or 0) and stores a message in `*err` when 
 
 | Function | In | Out |
 |---|---|---|
-| `int gascoigne_abi_version()` | | `2` |
+| `int gascoigne_abi_version()` | | `3` |
 | `uint64_t gascoigne_open(options, err)` | options JSON or `NULL` | handle, 0 on failure |
 | `char* gascoigne_optimize(h, request, err)` | `{text, tool?, cmd?, url?, query?, session?, agent?, model?}` | `{text, raw_id?, raw_tokens, out_tokens, skipped?}` |
 | `char* gascoigne_raw(h, id, err)` | raw id | original text |
@@ -82,9 +82,8 @@ On failure a function returns `NULL` (or 0) and stores a message in `*err` when 
 
 | `char* gascoigne_stats(h, query, err)` | `{by?, session?, agent?, model?, since?}`, `since` RFC 3339, `NULL` or `""` for none | `[{group, runs, optimized, failed, raw_tokens, out_tokens, saved, first?, last?}]` |
 | `char* gascoigne_recent(h, query, err)` | `{session?, agent?, model?, since?, before?, limit?}` | `[{id, time, session?, agent?, model?, command?, route?, optimizers?, raw_tokens, out_tokens, duration_ns, raw_id?, outcome, reason?}]`, newest first |
-| `char* gascoigne_costs(h, query, err)` | as `gascoigne_stats`, `by` ignored | `{billing, first_read_usd, in_context_usd, rereads, savings: [{model, source, assumed?, tokenizer, tokens, model_tokens, first_read_usd, in_context_usd}], unpriced?}` |
 
-Options: `{config?, set?[], only?[], disable?[], ignore_user_file?, timeout_ms?, ledger?, pricing?}`.
+Options: `{config?, set?[], only?[], disable?[], ignore_user_file?, timeout_ms?, ledger?}`.
 Calls are thread-safe; a Go panic becomes an error, never a crash of the host.
 
 ## The ledger: file or memory
@@ -96,33 +95,15 @@ The engine records every run in a ledger. `ledger` picks where:
 | `file` (default) | the sqlite file of the CLI configuration (`extensions.ledger.path`, `$GASCOIGNE_LEDGER`), shared with the CLI and its dashboard |
 | `memory` | a private in-memory ledger: nothing touches the disk, it is gone at `gascoigne_close`, the stored originals are capped (64 MiB, oldest dropped first). It wins over `$GASCOIGNE_LEDGER` |
 
-`gascoigne_stats`, `gascoigne_recent` and `gascoigne_costs` read it. `by` of a stats query is one of
+`gascoigne_stats` and `gascoigne_recent` read it: token counts only, no prices or dollars. `by` of a stats query is one of
 `route` (default), `session`, `family`, `optimizer`, `command`, `outcome`, `agent`, `model`, `day`,
 `week`, `month`; an unknown one is an error. `recent` returns at most `limit` runs (default 50, at
 most 1000) with a run `id` smaller than `before`. A run recorded for instruction text has no `raw_id`.
 An empty ledger gives `[]`.
 
-## Pricing
-
-`costs` turns tokens saved into dollars: an estimate from list prices, not a bill. `pricing`
-(`{billing?, prices?, file?}`) changes what it uses; the CLI additionally reads the user's own
-settings (`gascoigne pricing`), the embedded library does not:
-
-- `billing`: `auto` (default), `api` or `subscription`. A flat plan bills nothing per token, so
-  `costs` has no dollars: `savings` is empty and the totals are 0. The library has no sign-in to look
-  at, so `auto` means `api` here; the CLI's `auto` finds out per agent (see `protocol.md`).
-- `prices`: `{"<model id>": {"in", "out", "cache_read"?, "cache_write"?, "tokenizer"?}}` in dollars
-  per million tokens. `in` and `out` are required, cache prices default to `in`, `tokenizer` (`o200k`,
-  `claude`, `claude-legacy`, `gemini`) to `o200k`. They beat `file`, which beats the built-in list
-  price. Each saving says `source`: `built-in`, `static` or `json`.
-- `file`: a price sheet, `{"version": 1, "models": {...}}` with the same entries, read once at open.
-
-A bad price, a missing file or an unknown `billing` fails `gascoigne_open`. Prices are held per
-process, not per handle: the last handle opened with `pricing` sets them. There is no URL or
-command here: an embedder passes the prices it wants.
-
 ## Version history
 
 - `1`: `open`, `optimize`, `raw`, `config`, `close`, `free`.
-- `2`: adds `stats`, `recent`, `costs` and the options `ledger` and `pricing`. Functions of 1 behave
+- `2` (0.10.0): added `stats`, `recent`, `costs` and the options `ledger` and `pricing`.
+- `3`: drops `costs` and `pricing`; the SDK counts tokens only. Keeps `stats`, `recent` and `ledger`. Functions of 1 behave
   as before; an SDK built for 2 refuses a library of 1, as the other way round.

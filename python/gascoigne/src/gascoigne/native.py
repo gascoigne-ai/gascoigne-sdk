@@ -18,29 +18,13 @@ import threading
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from gascoigne.models import Costs, OptimizeRequest, Result, Run, Total
+from gascoigne.models import OptimizeRequest, Result, Run, Total
 
-ABI = 2
+ABI = 3
 
 
 class NativeError(Exception):
     """The library is missing, has another ABI, or reported a failure."""
-
-
-@dataclass(frozen=True)
-class Pricing:
-    """Where dollar figures come from. Prices are held per process, not per runtime."""
-
-    # "api" (default) or "subscription": a flat plan has no dollars
-    billing: str = ""
-    # static prices by model id, dollars per million tokens:
-    # {"in": 3, "out": 15, "cache_read": 0.3, "cache_write": 3.75, "tokenizer": "claude"}
-    # (in and out required; tokenizer is o200k, claude, claude-legacy or gemini)
-    prices: dict[str, dict[str, float | str]] = field(
-        default_factory=lambda: dict[str, dict[str, float | str]]()
-    )
-    # a price sheet (JSON) read once when the engine opens
-    file: str = ""
 
 
 @dataclass(frozen=True)
@@ -57,15 +41,9 @@ class Settings:
     timeout_ms: int = 0
     # "file" (default: the configured sqlite file) or "memory" (private to this process)
     ledger: str = ""
-    pricing: Pricing | None = None
 
     def to_json(self) -> str:
-        data = {k: v for k, v in asdict(self).items() if v and k != "pricing"}
-        if self.pricing is not None:
-            pricing = {k: v for k, v in asdict(self.pricing).items() if v}
-            if pricing:
-                data["pricing"] = pricing
-        return json.dumps(data)
+        return json.dumps({k: v for k, v in asdict(self).items() if v})
 
 
 def _names() -> list[str]:
@@ -222,9 +200,6 @@ class Native:
     def runs(self, query: dict[str, str | int]) -> list[Run]:
         return [Run.from_json(d) for d in json.loads(self._call("gascoigne_recent", _doc(query)))]
 
-    def costs(self, query: dict[str, str]) -> Costs:
-        return Costs.from_json(json.loads(self._call("gascoigne_costs", _doc(query))))
-
     def close(self) -> None:
         with self._lock:
             handle, self._handle = self._handle, 0
@@ -247,7 +222,6 @@ def _bind(lib: ctypes.CDLL) -> ctypes.CDLL:
         "gascoigne_raw",
         "gascoigne_stats",
         "gascoigne_recent",
-        "gascoigne_costs",
     ):
         getattr(lib, fn).argtypes = [ctypes.c_uint64, ctypes.c_char_p, err]
         getattr(lib, fn).restype = ctypes.c_void_p

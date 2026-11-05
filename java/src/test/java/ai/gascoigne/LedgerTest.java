@@ -25,10 +25,6 @@ class LedgerTest {
     private static final String RUNS = "[{\"id\":7,\"time\":\"2026-11-01T10:00:00Z\","
             + "\"session\":\"s1\",\"raw_tokens\":100,\"out_tokens\":10,\"raw_id\":\"abc\","
             + "\"outcome\":\"optimized\",\"optimizers\":[\"log\"]}]";
-    private static final String COSTS = "{\"billing\":\"api\",\"first_read_usd\":0.5,"
-            + "\"in_context_usd\":1.5,\"rereads\":110,\"savings\":[{\"model\":\"m\","
-            + "\"source\":\"static\",\"tokenizer\":\"o200k\",\"tokens\":10,\"model_tokens\":10,"
-            + "\"first_read_usd\":0.5,\"in_context_usd\":1.5}]}";
 
     private HttpServer server;
     private final List<String> urls = new ArrayList<>();
@@ -38,7 +34,7 @@ class LedgerTest {
         String health = "{\"version\":\"t\",\"proto\":1}";
         server.createContext("/sdk/v1/health", ex -> reply(ex, 200, health));
         var routes =
-                Map.of("/sdk/v1/stats", TOTALS, "/sdk/v1/recent", RUNS, "/sdk/v1/costs", COSTS);
+                Map.of("/sdk/v1/stats", TOTALS, "/sdk/v1/recent", RUNS);
         for (var route : routes.entrySet()) {
             server.createContext(route.getKey(), ex -> {
                 urls.add(ex.getRequestURI().toString());
@@ -87,10 +83,6 @@ class LedgerTest {
         assertEquals(List.of("log"), runs.get(0).optimizers());
         assertSameQuery(
                 "/sdk/v1/recent?before=9&limit=5&session=s1", urls.get(1));
-        var costs = g.costs(TotalsQuery.ALL);
-        assertEquals("api", costs.billing());
-        assertEquals(1.5, costs.inContextUsd());
-        assertEquals("static", costs.savings().get(0).source());
     }
 
     @Test void failuresAreEmptyNotExceptionsAndKeepTheBreakerClosed() throws Exception {
@@ -99,39 +91,30 @@ class LedgerTest {
             assertTrue(g.totals(TotalsQuery.ALL).isEmpty());
         }
         assertTrue(g.runs(RunsQuery.ALL).isEmpty());
-        assertEquals("", g.costs(TotalsQuery.ALL).billing());
         assertTrue(g.ready());
     }
 
     @Test void bypassIsEmpty() {
         var g = Gascoigne.builder().addr("127.0.0.1:9").searchPath("").warn(m -> {}).build();
         assertTrue(g.totals(TotalsQuery.ALL).isEmpty());
-        assertTrue(g.costs(TotalsQuery.ALL).savings().isEmpty());
     }
 
-    @Test void settingsCarryLedgerAndPricing() throws Exception {
-        var settings = Settings.defaults().withLedger("memory").withPricing(new Pricing(
-                "subscription", Map.of("m", new Price(1.0, 2.0, null, null, null)), null));
+    @Test void settingsCarryTheLedger() throws Exception {
+        var settings = Settings.defaults().withLedger("memory");
         var json = new com.fasterxml.jackson.databind.ObjectMapper().readTree(
                 new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(settings));
         assertEquals("memory", json.get("ledger").asText());
-        assertEquals("subscription", json.get("pricing").get("billing").asText());
-        assertEquals(1.0, json.get("pricing").get("prices").get("m").get("in").asDouble());
-        assertFalse(json.get("pricing").has("file"));
         assertFalse(json.has("config"));
+        assertFalse(json.has("pricing"));
     }
 
     @Test void embeddedMemoryLedger(@TempDir Path dir) throws Exception {
         assumeTrue(Files.exists(LIB), "build native/ first");
-        var settings = Settings.defaults().withoutUserFile().withLedger("memory").withPricing(
-                new Pricing(
-                        null,
-                        Map.of("acme-large", new Price(3.0, 15.0, null, null, "claude")),
-                        null));
+        var settings = Settings.defaults().withoutUserFile().withLedger("memory");
         var g = Gascoigne.builder().agent("sdk").session("s1").embedded(settings)
                 .library(LIB.toString()).build();
         String raw = "INFO request served path=/api/items status=200 ms=12\n".repeat(400);
-        g.optimizeResult(raw, new Attrs("bash", "tail app.log", "", "", "acme-large"));
+        g.optimizeResult(raw, Attrs.tool("bash"));
         var totals = g.totals(TotalsQuery.builder().by("agent").build());
         assertEquals("sdk", totals.get(0).group());
         assertEquals(1, totals.get(0).runs());
@@ -139,9 +122,6 @@ class LedgerTest {
         var runs = g.runs(RunsQuery.builder().session("s1").build());
         assertEquals(1, runs.size());
         assertFalse(runs.get(0).rawId().isEmpty());
-        var costs = g.costs(TotalsQuery.ALL);
-        assertTrue(costs.inContextUsd() > 0);
-        assertEquals("static", costs.savings().get(0).source());
         assertTrue(g.totals(TotalsQuery.builder().by("nonsense").build()).isEmpty());
         g.close();
     }

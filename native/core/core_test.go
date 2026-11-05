@@ -81,13 +81,8 @@ func optimizeLog(t *testing.T, h Handle, session string) {
 	}
 }
 
-func TestMemoryLedgerStatsRecentCosts(t *testing.T) {
-	in, out := 3.0, 15.0
-	h, err := Open(memoryOptions(t, func(o *Options) {
-		o.Pricing = &Pricing{Prices: map[string]Price{
-			"acme-large": {In: &in, Out: &out, Tokenizer: "claude"},
-		}}
-	}))
+func TestMemoryLedgerStatsAndRecent(t *testing.T) {
+	h, err := Open(memoryOptions(t, nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,22 +116,6 @@ func TestMemoryLedgerStatsRecentCosts(t *testing.T) {
 	if err != nil || len(runs) != 1 || runs[0].Session != "s1" || runs[0].RawID == "" {
 		t.Fatalf("recent = %s, %v", body, err)
 	}
-	body, err = Costs(h, `{}`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var costs struct {
-		Billing      string  `json:"billing"`
-		InContextUSD float64 `json:"in_context_usd"`
-		Savings      []struct {
-			Model, Source string
-		} `json:"savings"`
-	}
-	err = json.Unmarshal([]byte(body), &costs)
-	if err != nil || costs.Billing != "api" || costs.InContextUSD <= 0 ||
-		len(costs.Savings) != 1 || costs.Savings[0].Source != "static" {
-		t.Fatalf("costs = %s, %v", body, err)
-	}
 	// An empty query document is allowed, a bad one is an error, not a panic.
 	if _, err := Stats(h, ""); err != nil {
 		t.Fatalf("empty query: %v", err)
@@ -151,12 +130,8 @@ func TestMemoryLedgerStatsRecentCosts(t *testing.T) {
 	}
 }
 
-func TestLedgerAndPricingOptionsAreValidated(t *testing.T) {
-	for _, bad := range []string{
-		`{"ledger":"disk"}`,
-		`{"pricing":{"billing":"free"}}`,
-		`{"pricing":{"prices":{"x":{"in":1}}}}`,
-	} {
+func TestLedgerOptionIsValidated(t *testing.T) {
+	for _, bad := range []string{`{"ledger":"disk"}`} {
 		if h, err := Open(bad); err == nil {
 			Close(h)
 			t.Errorf("options %s accepted", bad)
@@ -182,7 +157,7 @@ func TestStatsOfAHandleWithoutRunsIsEmptyList(t *testing.T) {
 func TestStatsOnClosedHandleIsAnError(t *testing.T) {
 	h, _ := Open(memoryOptions(t, nil))
 	Close(h)
-	for _, call := range []func(Handle, string) (string, error){Stats, Recent, Costs} {
+	for _, call := range []func(Handle, string) (string, error){Stats, Recent} {
 		if _, err := call(h, `{}`); err == nil {
 			t.Fatal("closed handle accepted")
 		}

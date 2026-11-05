@@ -12,11 +12,6 @@ public sealed class LedgerTests : IDisposable
     private const string Runs = "[{\"id\":7,\"time\":\"2026-11-01T10:00:00Z\",\"session\":\"s1\","
         + "\"raw_tokens\":100,\"out_tokens\":10,\"raw_id\":\"abc\",\"outcome\":\"optimized\","
         + "\"optimizers\":[\"log\"]}]";
-    private const string CostsBody = "{\"billing\":\"api\",\"first_read_usd\":0.5,"
-        + "\"in_context_usd\":1.5,\"rereads\":110,\"savings\":[{\"model\":\"m\","
-        + "\"source\":\"static\","
-        + "\"tokenizer\":\"o200k\",\"tokens\":10,\"model_tokens\":10,\"first_read_usd\":0.5,"
-        + "\"in_context_usd\":1.5}]}";
     private static readonly string Lib = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "../../../../../../native/dist/libgascoigne.so"));
 
@@ -45,7 +40,7 @@ public sealed class LedgerTests : IDisposable
                     code = status;
                     body = status != 200 ? "boom"
                         : path.EndsWith("/stats") ? Totals
-                        : path.EndsWith("/recent") ? Runs : CostsBody;
+                        : Runs;
                 }
                 var b = Encoding.UTF8.GetBytes(body);
                 c.Response.StatusCode = code;
@@ -83,10 +78,6 @@ public sealed class LedgerTests : IDisposable
         Assert.Equal("abc", runs[0].RawId);
         Assert.Equal(new[] { "log" }, runs[0].Optimizers);
         SameQuery("/sdk/v1/recent?before=9&limit=5&session=s1", _urls[1]);
-        var costs = await g.CostsAsync();
-        Assert.Equal("api", costs.Billing);
-        Assert.Equal(1.5, costs.InContextUsd);
-        Assert.Equal("static", costs.Savings[0].Source);
     }
 
     [Fact]
@@ -99,7 +90,6 @@ public sealed class LedgerTests : IDisposable
         }
 
         Assert.Empty(await g.RunsAsync());
-        Assert.Equal("", (await g.CostsAsync()).Billing);
         Assert.True(await g.ReadyAsync());
     }
 
@@ -113,33 +103,19 @@ public sealed class LedgerTests : IDisposable
             Warn = _ => { },
         });
         Assert.Empty(await g.TotalsAsync());
-        Assert.Empty((await g.CostsAsync()).Savings);
     }
 
     [Fact]
-    public void SettingsCarryLedgerAndPricing()
+    public void SettingsCarryTheLedger()
     {
-        var settings = new EmbeddedSettings
-        {
-            Ledger = "memory",
-            Pricing = new Pricing
-            {
-                Billing = "subscription",
-                Prices = new Dictionary<string, Price> { ["m"] = new() { In = 1, Out = 2 } },
-            },
-        };
-        // The engine drops defaults and nulls; compare what is set.
+        var settings = new EmbeddedSettings { Ledger = "memory" };
         var json = JsonDocument.Parse(JsonSerializer.Serialize(settings, new JsonSerializerOptions
         {
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
         })).RootElement;
         Assert.Equal("memory", json.GetProperty("ledger").GetString());
-        var pricing = json.GetProperty("pricing");
-        Assert.Equal("subscription", pricing.GetProperty("billing").GetString());
-        var price = pricing.GetProperty("prices").GetProperty("m");
-        Assert.Equal(1, price.GetProperty("in").GetDouble());
-        Assert.False(pricing.TryGetProperty("file", out _));
         Assert.False(json.TryGetProperty("config", out _));
+        Assert.False(json.TryGetProperty("pricing", out _));
     }
 
     [Fact]
@@ -159,18 +135,11 @@ public sealed class LedgerTests : IDisposable
             {
                 IgnoreUserFile = true,
                 Ledger = "memory",
-                Pricing = new Pricing
-                {
-                    Prices = new Dictionary<string, Price>
-                    {
-                        ["acme-large"] = new() { In = 3, Out = 15, Tokenizer = "claude" },
-                    },
-                },
             },
         });
         var raw = string.Concat(Enumerable.Repeat(
             "INFO request served path=/api/items status=200 ms=12\n", 400));
-        await client.OptimizeResultAsync(raw, new Attrs { Tool = "bash", Model = "acme-large" });
+        await client.OptimizeResultAsync(raw, new Attrs { Tool = "bash" });
         var totals = await client.TotalsAsync(new TotalsQuery { By = "agent" });
         Assert.Equal("sdk", totals[0].Group);
         Assert.Equal(1, totals[0].Runs);
@@ -178,9 +147,6 @@ public sealed class LedgerTests : IDisposable
         var runs = await client.RunsAsync(new RunsQuery { Session = "s1" });
         Assert.Single(runs);
         Assert.NotEmpty(runs[0].RawId);
-        var costs = await client.CostsAsync();
-        Assert.True(costs.InContextUsd > 0);
-        Assert.Equal("static", costs.Savings[0].Source);
         Assert.Empty(await client.TotalsAsync(new TotalsQuery { By = "nonsense" }));
     }
 }

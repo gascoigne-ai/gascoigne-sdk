@@ -1,4 +1,4 @@
-use gascoigne::{Costs, Run, RunsQuery, Runtime, Total, TotalsQuery};
+use gascoigne::{Run, RunsQuery, Runtime, Total, TotalsQuery};
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
@@ -10,9 +10,6 @@ const TOTALS: &str = r#"[{"group":"sdk","runs":2,"optimized":2,"failed":0,
 "raw_tokens":100,"out_tokens":40,"saved":60}]"#;
 const RUNS: &str = r#"[{"id":7,"time":"2026-11-01T10:00:00Z","session":"s1",
 "raw_tokens":100,"out_tokens":10,"raw_id":"abc","outcome":"optimized","optimizers":["log"]}]"#;
-const COSTS: &str = r#"{"billing":"api","first_read_usd":0.5,"in_context_usd":1.5,
-"rereads":110,"savings":[{"model":"m","source":"static","tokenizer":"o200k","tokens":10,
-"model_tokens":10,"first_read_usd":0.5,"in_context_usd":1.5}]}"#;
 
 /// Tiny HTTP stub for health and the ledger routes; `status` answers the ledger ones. It records
 /// the request targets.
@@ -36,10 +33,8 @@ fn serve(status: u16) -> (String, Arc<Mutex<Vec<String>>>) {
                     "boom"
                 } else if target.starts_with("/sdk/v1/stats") {
                     TOTALS
-                } else if target.starts_with("/sdk/v1/recent") {
-                    RUNS
                 } else {
-                    COSTS
+                    RUNS
                 };
                 (status, body.to_string())
             };
@@ -99,10 +94,6 @@ fn reads_through_the_server() {
     });
     assert_eq!((runs[0].id, runs[0].raw_id.as_str()), (7, "abc"));
     assert_eq!(runs[0].optimizers, vec!["log".to_string()]);
-    let costs: Costs = rt.costs(&TotalsQuery::default());
-    assert_eq!(costs.billing, "api");
-    assert!((costs.in_context_usd - 1.5).abs() < f64::EPSILON);
-    assert_eq!(costs.savings[0].source, "static");
     let seen = seen.lock().unwrap();
     same_query(
         "/sdk/v1/stats?by=agent&session=s+1&since=2026-11-01T00%3A00%3A00Z",
@@ -124,7 +115,6 @@ fn failures_are_empty_and_keep_the_breaker_closed() {
         assert!(rt.totals(&TotalsQuery::default()).is_empty());
     }
     assert!(rt.runs(&RunsQuery::default()).is_empty());
-    assert_eq!(rt.costs(&TotalsQuery::default()).billing, "");
     assert!(rt.ready());
 }
 
@@ -136,6 +126,5 @@ fn bypass_is_empty() {
     std::env::set_var("GASCOIGNE_SDK", "off");
     let rt = Runtime::new("t");
     assert!(rt.totals(&TotalsQuery::default()).is_empty());
-    assert!(rt.costs(&TotalsQuery::default()).savings.is_empty());
     std::env::remove_var("GASCOIGNE_SDK");
 }

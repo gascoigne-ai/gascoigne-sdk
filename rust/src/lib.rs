@@ -5,7 +5,7 @@
 
 mod native;
 
-pub use native::{Price, Pricing, Settings};
+pub use native::Settings;
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -98,41 +98,11 @@ pub struct Run {
     pub reason: String,
 }
 
-/// The tokens saved, priced for one model.
-#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
-#[serde(default)]
-pub struct ModelCost {
-    pub model: String,
-    /// Where the price comes from: `built-in`, `static`, `json`, `api` or `script`.
-    pub source: String,
-    pub assumed: bool,
-    pub tokenizer: String,
-    /// Saved, in gascoigne's estimate units.
-    pub tokens: u64,
-    /// Saved, in the model's own tokens.
-    pub model_tokens: u64,
-    pub first_read_usd: f64,
-    pub in_context_usd: f64,
-}
-
-/// What the tokens saved are worth: an estimate from list prices or the prices configured for
-/// gascoigne, not what anyone is billed. With `billing == "subscription"` there are no dollars.
-#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
-#[serde(default)]
-pub struct Costs {
-    pub billing: String,
-    pub first_read_usd: f64,
-    pub in_context_usd: f64,
-    pub rereads: f64,
-    pub savings: Vec<ModelCost>,
-    pub unpriced: Vec<String>,
-}
-
-/// Filters for [`Runtime::totals`] and [`Runtime::costs`]; empty ones match everything.
+/// Filters for [`Runtime::totals`]; empty ones match everything.
 #[derive(Debug, Clone, Default)]
 pub struct TotalsQuery {
     /// `route` (default), `session`, `family`, `optimizer`, `command`, `outcome`, `agent`,
-    /// `model`, `day`, `week` or `month`; totals only.
+    /// `model`, `day`, `week` or `month`.
     pub by: String,
     pub session: String,
     pub agent: String,
@@ -460,19 +430,6 @@ impl Runtime {
             ("limit", number(u64::from(query.limit))),
         ];
         self.read("/sdk/v1/recent", &fields, native::Native::recent)
-            .unwrap_or_default()
-    }
-
-    /// What the tokens saved are worth, an estimate not a bill; empty (`billing == ""`) on any
-    /// failure. `by` of the query is ignored.
-    pub fn costs(&self, query: &TotalsQuery) -> Costs {
-        let fields = [
-            ("session", query.session.clone()),
-            ("agent", query.agent.clone()),
-            ("model", query.model.clone()),
-            ("since", query.since.clone()),
-        ];
-        self.read("/sdk/v1/costs", &fields, native::Native::costs)
             .unwrap_or_default()
     }
 

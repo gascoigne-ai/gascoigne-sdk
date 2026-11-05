@@ -51,25 +51,7 @@ async function serve(status = 200) {
           },
         ]),
       );
-    return res.end(
-      JSON.stringify({
-        billing: "api",
-        first_read_usd: 0.5,
-        in_context_usd: 1.5,
-        rereads: 110,
-        savings: [
-          {
-            model: "m",
-            source: "static",
-            tokenizer: "o200k",
-            tokens: 10,
-            model_tokens: 10,
-            first_read_usd: 0.5,
-            in_context_usd: 1.5,
-          },
-        ],
-      }),
-    );
+    return res.end("{}");
   });
   const s = srv;
   await new Promise<void>((r) => s.listen(0, "127.0.0.1", r));
@@ -86,7 +68,7 @@ afterEach(async () => {
 });
 
 describe("ledger reads through the server", () => {
-  it("totals, runs and costs map the wire to camelCase and send the query", async () => {
+  it("totals and runs map the wire to camelCase and send the query", async () => {
     await serve();
     const rt = new Runtime();
     const totals = await rt.totals({
@@ -116,10 +98,6 @@ describe("ledger reads through the server", () => {
       outcome: "optimized",
     });
     expect(urls[1]).toBe("/sdk/v1/recent?session=s1&before=9&limit=5");
-    const costs = await rt.costs();
-    expect(costs.billing).toBe("api");
-    expect(costs.inContextUsd).toBe(1.5);
-    expect(costs.savings[0]).toMatchObject({ model: "m", source: "static", inContextUsd: 1.5 });
   });
 
   it("never throws and never trips the optimize breaker", async () => {
@@ -127,7 +105,6 @@ describe("ledger reads through the server", () => {
     const rt = new Runtime();
     for (let i = 0; i < 10; i++) expect(await rt.totals()).toEqual([]);
     expect(await rt.runs()).toEqual([]);
-    expect((await rt.costs()).billing).toBe("");
     expect(await rt.ready()).toBe(true);
   });
 
@@ -135,7 +112,6 @@ describe("ledger reads through the server", () => {
     process.env.GASCOIGNE_SDK = "off";
     const rt = new Runtime();
     expect(await rt.totals()).toEqual([]);
-    expect((await rt.costs()).savings).toEqual([]);
     delete process.env.GASCOIGNE_SDK;
   });
 });
@@ -150,23 +126,16 @@ describe("embedded memory ledger", () => {
       mode: "native",
       agent: "sdk",
       session: "s1",
-      settings: {
-        ignoreUserFile: true,
-        ledger: "memory",
-        pricing: { prices: { "acme-large": { in: 3, out: 15, tokenizer: "claude" } } },
-      },
+      settings: { ignoreUserFile: true, ledger: "memory" },
     });
     const raw = "INFO request served path=/api/items status=200 ms=12\n".repeat(400);
-    await rt.optimizeResult(raw, { tool: "bash", cmd: "tail app.log", model: "acme-large" });
+    await rt.optimizeResult(raw, { tool: "bash", cmd: "tail app.log" });
     const totals = await rt.totals({ by: "agent" });
     expect(totals.map((t) => [t.group, t.runs])).toEqual([["sdk", 1]]);
     expect(totals[0]?.saved).toBeGreaterThan(0);
     const runs = await rt.runs({ session: "s1" });
     expect(runs).toHaveLength(1);
     expect(runs[0]?.rawId).not.toBe("");
-    const costs = await rt.costs();
-    expect(costs.inContextUsd).toBeGreaterThan(0);
-    expect(costs.savings[0]?.source).toBe("static");
     expect(await rt.totals({ by: "nonsense" })).toEqual([]);
     expect(readdirSync(data)).toEqual([]);
     rt.close();

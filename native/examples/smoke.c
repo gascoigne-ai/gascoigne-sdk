@@ -6,7 +6,7 @@
 /* Opens an engine, optimizes a repetitive log, prints the response. */
 int main(void) {
 	char *err = NULL;
-	if (gascoigne_abi_version() != 2) return 2;
+	if (gascoigne_abi_version() != 3) return 2;
 	unsigned long long h = gascoigne_open("{\"ignore_user_file\":true,\"config\":\"extensions:\\n  ledger:\\n    path: /tmp/gascoigne-smoke.db\\n\"}", &err);
 	if (!h) { fprintf(stderr, "open: %s\n", err); return 1; }
 	char *req = malloc(400 * 64 + 64);

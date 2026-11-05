@@ -420,24 +420,6 @@ public sealed class GascoigneClient : IDisposable
             ?? [];
     }
 
-    /// <summary>
-    /// What the tokens saved are worth, an estimate not a bill; empty (Billing "") on any failure.
-    /// <see cref="TotalsQuery.By"/> is ignored.
-    /// </summary>
-    public async Task<Costs> CostsAsync(TotalsQuery? query = null, CancellationToken ct = default)
-    {
-        query ??= new TotalsQuery();
-        var fields = new Dictionary<string, string?>
-        {
-            ["session"] = query.Session,
-            ["agent"] = query.Agent,
-            ["model"] = query.Model,
-            ["since"] = Rfc3339(query.Since),
-        };
-        return await ReadAsync<Costs>("/sdk/v1/costs", fields, (e, q) => e.Costs(q), ct)
-            ?? new Costs();
-    }
-
     private static string? Rfc3339(DateTimeOffset? when) =>
         when?.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
 

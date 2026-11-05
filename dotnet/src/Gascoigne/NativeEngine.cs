@@ -10,7 +10,7 @@ namespace Gascoigne;
 /// <summary>The embedded variant: libgascoigne loaded at run time (see spec/native.md).</summary>
 internal sealed class NativeEngine : IDisposable
 {
-    private const int Abi = 2;
+    private const int Abi = 3;
 
     private static bool EnvIs(string name, string value) =>
         Environment.GetEnvironmentVariable(name) == value;
@@ -26,7 +26,6 @@ internal sealed class NativeEngine : IDisposable
     private readonly Call _raw;
     private readonly Call _stats;
     private readonly Call _recent;
-    private readonly Call _costs;
     private readonly Close _close;
     private readonly Free _free;
     private readonly ulong _handle;
@@ -70,7 +69,6 @@ internal sealed class NativeEngine : IDisposable
             _raw = Bind<Call>("gascoigne_raw");
             _stats = Bind<Call>("gascoigne_stats");
             _recent = Bind<Call>("gascoigne_recent");
-            _costs = Bind<Call>("gascoigne_costs");
             _close = Bind<Close>("gascoigne_close");
             _free = Bind<Free>("gascoigne_free");
             _handle = OpenHandle(settings);
@@ -294,9 +292,6 @@ internal sealed class NativeEngine : IDisposable
 
     /// <summary>Recorded runs, as the library's JSON list.</summary>
     internal string Recent(string queryJson) => Invoke(_recent, queryJson);
-
-    /// <summary>The tokens saved, priced, as the library's JSON object.</summary>
-    internal string Costs(string queryJson) => Invoke(_costs, queryJson);
 
     public void Dispose()
     {

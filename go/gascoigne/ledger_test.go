@@ -31,10 +31,6 @@ func ledgerServer(t *testing.T, status int) *string {
 		case "/sdk/v1/recent":
 			run := Run{ID: 7, Session: "s1", RawID: "abc", Outcome: "optimized"}
 			_ = json.NewEncoder(w).Encode([]Run{run})
-		case "/sdk/v1/costs":
-			costs := Costs{Billing: "api", InContextUSD: 1.5}
-			costs.Savings = []ModelCost{{Model: "m", Source: "static"}}
-			_ = json.NewEncoder(w).Encode(costs)
 		}
 	}))
 	t.Cleanup(srv.Close)
@@ -63,10 +59,6 @@ func TestLedgerReadsThroughTheServer(t *testing.T) {
 	if want := "/sdk/v1/recent?before=9&limit=5&session=s1"; *last != want {
 		t.Fatalf("query = %s, want %s", *last, want)
 	}
-	costs, err := rt.Costs(ctx, TotalsQuery{})
-	if err != nil || costs.InContextUSD != 1.5 || costs.Savings[0].Source != "static" {
-		t.Fatalf("costs = %+v, %v", costs, err)
-	}
 }
 
 func TestLedgerReadFailureIsAnErrorNotAPanicAndSkipsTheBreaker(t *testing.T) {
@@ -92,9 +84,6 @@ func TestLedgerReadsInBypassAreEmptyWithAnError(t *testing.T) {
 	if got, err := rt.Totals(context.Background(), TotalsQuery{}); err == nil || got != nil {
 		t.Fatalf("bypass: %+v, %v", got, err)
 	}
-	if got, err := rt.Costs(context.Background(), TotalsQuery{}); err == nil || got.Billing != "" {
-		t.Fatalf("bypass: %+v, %v", got, err)
-	}
 }
 
 // ledgerBackend is an embedded engine that also answers ledger reads.
@@ -104,9 +93,6 @@ func (ledgerBackend) Totals(context.Context, TotalsQuery) ([]Total, error) {
 	return []Total{{Group: "embedded", Runs: 1}}, nil
 }
 func (ledgerBackend) Runs(context.Context, RunsQuery) ([]Run, error) { return []Run{{ID: 1}}, nil }
-func (ledgerBackend) Costs(context.Context, TotalsQuery) (Costs, error) {
-	return Costs{Billing: "subscription"}, nil
-}
 
 type plainBackend struct{}
 
@@ -120,9 +106,6 @@ func TestLedgerReadsThroughAnEmbeddedBackend(t *testing.T) {
 	ctx := context.Background()
 	if totals, err := rt.Totals(ctx, TotalsQuery{}); err != nil || totals[0].Group != "embedded" {
 		t.Fatalf("totals = %+v, %v", totals, err)
-	}
-	if costs, err := rt.Costs(ctx, TotalsQuery{}); err != nil || costs.Billing != "subscription" {
-		t.Fatalf("costs = %+v, %v", costs, err)
 	}
 	// A backend without ledger reads says so.
 	plain := New(Options{Backend: plainBackend{}})

@@ -43,33 +43,9 @@ type Run struct {
 	Reason     string        `json:"reason,omitempty"`
 }
 
-// Costs is what the tokens saved are worth: estimates from list prices or the prices configured
-// for gascoigne, not what anyone is billed. With Billing "subscription" it has no dollars.
-type Costs struct {
-	Billing      string      `json:"billing"`
-	FirstReadUSD float64     `json:"first_read_usd"`
-	InContextUSD float64     `json:"in_context_usd"`
-	Rereads      float64     `json:"rereads"`
-	Savings      []ModelCost `json:"savings"`
-	Unpriced     []string    `json:"unpriced,omitempty"`
-}
-
-// ModelCost is the saving priced for one model. Source says where the price comes from:
-// built-in, static, json, api or script.
-type ModelCost struct {
-	Model        string  `json:"model"`
-	Source       string  `json:"source"`
-	Assumed      bool    `json:"assumed,omitempty"`
-	Tokenizer    string  `json:"tokenizer"`
-	Tokens       int     `json:"tokens"`
-	ModelTokens  int     `json:"model_tokens"`
-	FirstReadUSD float64 `json:"first_read_usd"`
-	InContextUSD float64 `json:"in_context_usd"`
-}
-
-// TotalsQuery selects what Totals and Costs sum. Empty fields match everything. By is one of
-// route, session, family, optimizer, command, outcome, agent, model, day, week or month
-// (Totals only; empty means route).
+// TotalsQuery selects what Totals sums. Empty fields match everything. By is one of route,
+// session, family, optimizer, command, outcome, agent, model, day, week or month (empty means
+// route).
 type TotalsQuery struct {
 	By, Session, Agent, Model string
 	Since                     time.Time
@@ -85,11 +61,10 @@ type RunsQuery struct {
 }
 
 // LedgerBackend is implemented by a Backend that can also answer ledger reads (the embedded
-// engine does). A Backend without it makes Totals, Runs and Costs return ErrNoLedger.
+// engine does). A Backend without it makes Totals and Runs return ErrNoLedger.
 type LedgerBackend interface {
 	Totals(ctx context.Context, q TotalsQuery) ([]Total, error)
 	Runs(ctx context.Context, q RunsQuery) ([]Run, error)
-	Costs(ctx context.Context, q TotalsQuery) (Costs, error)
 }
 
 // ErrNoLedger means there is nothing to read: gascoigne is off or missing, or the embedded
@@ -149,20 +124,6 @@ func (r *Runtime) Runs(ctx context.Context, q RunsQuery) ([]Run, error) {
 	}
 	var out []Run
 	return out, r.read(ctx, "/sdk/v1/recent", q.values(), &out)
-}
-
-// Costs prices the tokens saved by the runs matching q (By is ignored).
-func (r *Runtime) Costs(ctx context.Context, q TotalsQuery) (Costs, error) {
-	if r.opts.Backend != nil {
-		backend, ok := r.opts.Backend.(LedgerBackend)
-		if !ok || !r.Ready(ctx) {
-			return Costs{}, ErrNoLedger
-		}
-		return backend.Costs(ctx, q)
-	}
-	var out Costs
-	err := r.read(ctx, "/sdk/v1/costs", q.values(), &out)
-	return out, err
 }
 
 // read GETs a ledger route from the server into out.

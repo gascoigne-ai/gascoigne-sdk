@@ -1,6 +1,5 @@
 #![cfg(feature = "native")]
-use gascoigne::{Attrs, Price, Pricing, RunsQuery, Runtime, Settings, TotalsQuery};
-use std::collections::BTreeMap;
+use gascoigne::{Attrs, RunsQuery, Runtime, Settings, TotalsQuery};
 
 /// Against the real library built from native/: a memory ledger counts runs and writes no file.
 #[test]
@@ -22,18 +21,6 @@ fn embedded_memory_ledger() {
         Settings {
             ignore_user_file: true,
             ledger: "memory".into(),
-            pricing: Some(Pricing {
-                prices: BTreeMap::from([(
-                    "acme-large".to_string(),
-                    Price {
-                        input: 3.0,
-                        output: 15.0,
-                        tokenizer: "claude".into(),
-                        ..Price::default()
-                    },
-                )]),
-                ..Pricing::default()
-            }),
             ..Settings::default()
         },
     )
@@ -41,7 +28,6 @@ fn embedded_memory_ledger() {
     let raw = "INFO request served path=/api/items status=200 ms=12\n".repeat(400);
     let attrs = Attrs {
         tool: "bash".into(),
-        model: "acme-large".into(),
         ..Attrs::default()
     };
     rt.optimize_result(&raw, &attrs);
@@ -54,9 +40,6 @@ fn embedded_memory_ledger() {
     let runs = rt.runs(&RunsQuery::default());
     assert_eq!(runs.len(), 1);
     assert!(!runs[0].raw_id.is_empty());
-    let costs = rt.costs(&TotalsQuery::default());
-    assert!(costs.in_context_usd > 0.0);
-    assert_eq!(costs.savings[0].source, "static");
     assert!(rt
         .totals(&TotalsQuery {
             by: "nonsense".into(),

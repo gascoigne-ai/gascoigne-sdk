@@ -127,28 +127,24 @@ then what you pass.
 
 ## Read your savings
 
-Every SDK can read what the engine recorded, so your app can show it or log it. Reads never raise and
-return nothing on any failure (Go returns an error as well).
+Every SDK can read the token counts the engine recorded, so your app can show or log them. Reads never
+raise and return nothing on any failure (Go returns an error as well). The SDK has no prices: it counts
+tokens, not dollars.
 
-| Language | Tokens saved per group | Recent runs | What it is worth |
-|---|---|---|---|
-| Python | `rt.totals(by="day")` | `rt.runs(session="s1")` | `rt.costs()` |
-| TypeScript | `await rt.totals({ by: "day" })` | `await rt.runs({ session })` | `await rt.costs()` |
-| Go | `rt.Totals(ctx, TotalsQuery{By: "day"})` | `rt.Runs(ctx, RunsQuery{})` | `rt.Costs(ctx, TotalsQuery{})` |
-| Java | `g.totals(TotalsQuery.builder().by("day").build())` | `g.runs(RunsQuery.ALL)` | `g.costs(TotalsQuery.ALL)` |
-| .NET | `await g.TotalsAsync(new TotalsQuery { By = "day" })` | `await g.RunsAsync()` | `await g.CostsAsync()` |
-| Rust | `rt.totals(&TotalsQuery { by: "day".into(), ..Default::default() })` | `rt.runs(&RunsQuery::default())` | `rt.costs(&TotalsQuery::default())` |
+| Language | Tokens saved per group | Recent runs |
+|---|---|---|
+| Python | `rt.totals(by="day")` | `rt.runs(session="s1")` |
+| TypeScript | `await rt.totals({ by: "day" })` | `await rt.runs({ session })` |
+| Go | `rt.Totals(ctx, TotalsQuery{By: "day"})` | `rt.Runs(ctx, RunsQuery{})` |
+| Java | `g.totals(TotalsQuery.builder().by("day").build())` | `g.runs(RunsQuery.ALL)` |
+| .NET | `await g.TotalsAsync(new TotalsQuery { By = "day" })` | `await g.RunsAsync()` |
+| Rust | `rt.totals(&TotalsQuery { by: "day".into(), ..Default::default() })` | `rt.runs(&RunsQuery::default())` |
 
 In proxy mode they read the ledger of your `gascoigne server`, the one its dashboard shows. In native
 mode they read the engine's own ledger: the sqlite file by default, or `ledger: memory` (Python
 `Settings(ledger="memory")`, TypeScript `settings: { ledger: "memory" }`, Go `embedded.Options{Ledger:
 "memory"}`, Java `Settings.defaults().withLedger("memory")`, .NET `Ledger = "memory"`, Rust
 `ledger: "memory".into()`) to keep it in your process, with no file.
-
-`costs` is an estimate from list prices, not a bill. For your own prices, or none (`billing:
-"subscription"` for a flat plan), pass `pricing` in the same settings: `prices` per model, in dollars per
-million tokens, and an optional price sheet `file` (see [`spec/native.md`](spec/native.md#pricing)). In
-proxy mode set them with `gascoigne pricing` on the machine that runs the server.
 
 ## Three ways to meet your tools
 
