@@ -14,7 +14,7 @@ gascoigne-native = { workspace = true }
 dev = [
   "pytest>=9.2.0",
   "pytest-httpx>=0.35",
-  "pytest-asyncio>=0.24",
+  "pytest-asyncio>=1.4.1.post1",
   "ruff>=0.17.3",
   "pyright>=1.1.400",
   "mcp>=1.2",
