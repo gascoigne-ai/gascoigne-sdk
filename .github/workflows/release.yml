@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with: { repository: gascoigne-ai/gascoigne-cli, path: cli }
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with: { go-version-file: native/go.mod }
       - run: python3 scripts/check_version.py native "${TAG#native-v}"
       - run: |
