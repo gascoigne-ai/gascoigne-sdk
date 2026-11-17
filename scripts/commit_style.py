@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Checks commit subjects against .harness/common/commit-style.md.
 
-Usage: scripts/commit_style.py [range]   (default: origin/master..HEAD)
+Usage: scripts/commit_style.py [range]   (default: origin/main..HEAD)
 """
 
 import re
@@ -27,7 +27,7 @@ def subjects(revision_range: str) -> list[str]:
 
 
 def main() -> int:
-    revision_range = sys.argv[1] if len(sys.argv) > 1 else "origin/master..HEAD"
+    revision_range = sys.argv[1] if len(sys.argv) > 1 else "origin/main..HEAD"
     problems = []
     for subject in subjects(revision_range):
         if not SUBJECT.match(subject):
