@@ -15,3 +15,5 @@ Shared with the other gascoigne repos: submodule `.harness/common`.
 @.harness/common/architecture-style.md
 @.harness/rules.md
 @.harness/code-style.md
+
+Task queue: `.harness/tasks/`, run with `/task-loop` (verify: `mise run check`).
