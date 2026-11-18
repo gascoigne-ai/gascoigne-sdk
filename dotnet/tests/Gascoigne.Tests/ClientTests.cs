@@ -5,9 +5,6 @@ using Xunit;
 
 public sealed class ClientTests : IDisposable
 {
-    private const string OptimizeReply =
-        "{\"text\":\"short\",\"raw_id\":\"abc\",\"raw_tokens\":100,\"out_tokens\":5}";
-
     private HttpListener? _l;
     private readonly List<string> _posts = new();
 
@@ -25,14 +22,19 @@ public sealed class ClientTests : IDisposable
                 try { c = await _l.GetContextAsync(); } catch { return; }
                 string body; var status = 200;
                 var path = c.Request.Url!.AbsolutePath;
-                if (path.EndsWith("/health")) body = $"{{\"version\":\"t\",\"proto\":{proto}}}";
+                if (path.EndsWith("/health"))
+                {
+                    body = proto == 1
+                        ? Fixtures.Health
+                        : "{\"version\":\"t\",\"proto\":" + proto + "}";
+                }
                 else if (path.EndsWith("/optimize"))
                 {
                     _posts.Add(await new StreamReader(c.Request.InputStream).ReadToEndAsync());
                     status = optimizeStatus;
-                    body = OptimizeReply;
+                    body = Fixtures.OptimizedJson;
                 }
-                else body = "original";
+                else body = Fixtures.Raw;
                 var b = Encoding.UTF8.GetBytes(body);
                 c.Response.StatusCode = status;
                 await c.Response.OutputStream.WriteAsync(b);
@@ -73,13 +75,15 @@ public sealed class ClientTests : IDisposable
         });
         var text = string.Concat(Enumerable.Repeat("long ", 100));
         var res = await g.OptimizeResultAsync(text, new Attrs { Tool = "grep" });
-        Assert.Equal(("short", "abc", 5L), (res.Text, res.RawId, res.OutTokens));
+        var want = Fixtures.Optimized;
+        Assert.Equal(
+            (want.Text, want.RawId, want.OutTokens), (res.Text, res.RawId, res.OutTokens));
         Assert.Contains("\"agent\":\"demo\"", _posts[0]);
         Assert.Contains("\"tool\":\"grep\"", _posts[0]);
-        Assert.Equal(new[] { "abc" }, seen);
-        Assert.Equal(new Stats(100, 5), g.Stats());
+        Assert.Equal(new[] { want.RawId }, seen);
+        Assert.Equal(new Stats(want.RawTokens, want.OutTokens), g.Stats());
         Assert.EndsWith("/v1", await g.ProxyBaseUrlAsync());
-        Assert.Equal("original", await g.RawAsync("abc"));
+        Assert.Equal(Fixtures.Raw, await g.RawAsync(want.RawId));
     }
 
     [Fact]
@@ -107,14 +111,15 @@ public sealed class ClientTests : IDisposable
     public async Task WrapToolOptimizesStrings()
     {
         var g = new GascoigneClient(new GascoigneOptions { Addr = Serve(1, 200) });
-        Assert.Equal("short", await g.WrapTool<string>("t", _ => Task.FromResult("big"))("in"));
+        var wrapped = g.WrapTool<string>("t", _ => Task.FromResult("big"));
+        Assert.Equal(Fixtures.Optimized.Text, await wrapped("in"));
     }
 
     [Fact]
     public async Task RetrieveNarrowsTheOriginal()
     {
         var g = new GascoigneClient(new GascoigneOptions { Addr = Serve(1, 200) });
-        Assert.Equal("1: original", await g.RetrieveAsync("abc"));
+        Assert.StartsWith("1: " + Fixtures.Raw.Split('\n')[0], await g.RetrieveAsync("abc"));
         Assert.Equal("", await g.RetrieveAsync("abc", grep: "nomatch"));
         Assert.StartsWith("Bad selection", await g.RetrieveAsync("abc", grep: "("));
     }

@@ -7,11 +7,6 @@ using Xunit;
 
 public sealed class LedgerTests : IDisposable
 {
-    private const string Totals = "[{\"group\":\"sdk\",\"runs\":2,\"optimized\":2,\"failed\":0,"
-        + "\"raw_tokens\":100,\"out_tokens\":40,\"saved\":60}]";
-    private const string Runs = "[{\"id\":7,\"time\":\"2026-11-01T10:00:00Z\",\"session\":\"s1\","
-        + "\"raw_tokens\":100,\"out_tokens\":10,\"raw_id\":\"abc\",\"outcome\":\"optimized\","
-        + "\"optimizers\":[\"log\"]}]";
     private static readonly string Lib = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "../../../../../../native/dist/libgascoigne.so"));
 
@@ -33,14 +28,14 @@ public sealed class LedgerTests : IDisposable
                 var path = c.Request.Url!.AbsolutePath;
                 string body;
                 var code = 200;
-                if (path.EndsWith("/health")) body = "{\"version\":\"t\",\"proto\":1}";
+                if (path.EndsWith("/health")) body = Fixtures.Health;
                 else
                 {
                     _urls.Add(c.Request.Url!.PathAndQuery);
                     code = status;
                     body = status != 200 ? "boom"
-                        : path.EndsWith("/stats") ? Totals
-                        : Runs;
+                        : path.EndsWith("/stats") ? Fixtures.Stats
+                        : Fixtures.Recent;
                 }
                 var b = Encoding.UTF8.GetBytes(body);
                 c.Response.StatusCode = code;
@@ -70,13 +65,14 @@ public sealed class LedgerTests : IDisposable
             Session = "s 1",
             Since = DateTimeOffset.Parse("2026-11-01T00:00:00Z"),
         });
-        var total = Assert.Single(totals);
-        Assert.Equal(new Total("sdk", 2, 2, 0, 100, 40, 60), total);
+        Assert.Equal(Fixtures.Json<List<Total>>("stats.json"), totals);
         SameQuery("/sdk/v1/stats?by=agent&session=s+1&since=2026-11-01T00%3A00%3A00Z", _urls[0]);
         var runs = await g.RunsAsync(new RunsQuery { Session = "s1", Limit = 5, Before = 9 });
-        Assert.Equal(7, runs[0].Id);
-        Assert.Equal("abc", runs[0].RawId);
-        Assert.Equal(new[] { "log" }, runs[0].Optimizers);
+        var want = Fixtures.Json<List<Run>>("recent.json");
+        Assert.Equal(want.Count, runs.Count);
+        Assert.Equal(want[1].Id, runs[1].Id);
+        Assert.Equal(want[1].RawId, runs[1].RawId);
+        Assert.Equal(want[1].Optimizers, runs[1].Optimizers);
         SameQuery("/sdk/v1/recent?before=9&limit=5&session=s1", _urls[1]);
     }
 
