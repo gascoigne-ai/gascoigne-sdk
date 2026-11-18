@@ -14,7 +14,7 @@ internal static class Selection
     /// </summary>
     public static string Of(string text, string grep, string lines)
     {
-        var rows = text.ReplaceLineEndings("\n").Split('\n');
+        var rows = SplitLines(text);
         var (start, end) = ParseRange(lines, rows.Length);
         var pattern = grep.Length == 0
             ? null
@@ -36,6 +36,19 @@ internal static class Selection
         }
 
         return string.Join('\n', kept);
+    }
+
+    // Python splitlines gives no row after a final line terminator, so drop exactly one trailing
+    // empty element: "a\n" is one line, "a\n\n" is two and "" has none.
+    private static string[] SplitLines(string text)
+    {
+        var rows = text.ReplaceLineEndings("\n").Split('\n');
+        if (rows[^1].Length == 0)
+        {
+            rows = rows[..^1];
+        }
+
+        return rows;
     }
 
     private static (int Start, int End) ParseRange(string lines, int count)

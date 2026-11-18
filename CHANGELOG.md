@@ -8,6 +8,11 @@ changed for you, in plain words.
 
 ## [Unreleased]
 
+### Fixed
+
+- .NET: `retrieve_original` no longer counts a phantom last line when the original ends in a newline; the cap
+  note now says 200 more lines for the fixture, like Python. Empty text now returns an empty string.
+
 ### Changed
 
 - .NET: one-letter parameters and closure arguments now have full names. All renamed ones are private or

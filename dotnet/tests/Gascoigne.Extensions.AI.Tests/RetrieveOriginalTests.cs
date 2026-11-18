@@ -56,6 +56,13 @@ public sealed class RetrieveOriginalTests : IDisposable
         return ((JsonElement)result!).GetString()!;
     }
 
+    // Lines of the fixture as Python splitlines gives them: no row after the final newline.
+    private static string[] Rows()
+    {
+        var rows = Original.ReplaceLineEndings("\n").Split('\n');
+        return rows[^1].Length == 0 ? rows[..^1] : rows;
+    }
+
     [Fact]
     public void CreateRejectsNull() =>
         Assert.Throws<ArgumentNullException>(() => RetrieveOriginalFunction.Create(null!));
@@ -77,18 +84,18 @@ public sealed class RetrieveOriginalTests : IDisposable
                 .Select(element => element.GetString()!).ToArray());
     }
 
-    // The fixture ends with a newline, so this implementation counts an empty 401st row
-    // (Python counts 400 lines). Pinned as is.
+    // Regression: the fixture ends with a newline, which used to add an empty 401st row, so the
+    // note said "200 more lines" where Python says 200.
     [Fact]
     public async Task ReturnsCappedNumberedLinesOfTheFixtureAndFetchesTheRawRoute()
     {
         using var gascoigne = Server();
         var f = RetrieveOriginalFunction.Create(gascoigne);
         var result = await Call(f, new() { ["rawId"] = "a4e762ac" });
-        var rows = Original.ReplaceLineEndings("\n").Split('\n');
-        Assert.Equal(401, rows.Length);
+        var rows = Rows();
+        Assert.Equal(400, rows.Length);
         var expected = rows.Take(200).Select((row, i) => $"{i + 1}: {row}")
-            .Append("... 201 more lines; narrow with grep or lines");
+            .Append("... 200 more lines; narrow with grep or lines");
         Assert.Equal(string.Join('\n', expected), result);
         Assert.EndsWith("/sdk/v1/raw/a4e762ac", _lastPath);
     }
@@ -98,7 +105,7 @@ public sealed class RetrieveOriginalTests : IDisposable
     {
         using var gascoigne = Server();
         var f = RetrieveOriginalFunction.Create(gascoigne);
-        var rows = Original.ReplaceLineEndings("\n").Split('\n');
+        var rows = Rows();
         var grep = await Call(f, new() { ["rawId"] = "x", ["grep"] = "job=2 " });
         Assert.StartsWith($"3: {rows[2]}\n6: {rows[5]}", grep);
         var range = await Call(f, new() { ["rawId"] = "x", ["lines"] = "1-1" });
