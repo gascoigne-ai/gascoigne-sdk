@@ -62,7 +62,7 @@ public static class GascoigneFunctionInvocation
         var text = result switch
         {
             string s => s,
-            JsonElement { ValueKind: JsonValueKind.String } e => e.GetString(),
+            JsonElement { ValueKind: JsonValueKind.String } element => element.GetString(),
             _ => null,
         };
         if (text is null || options.Skip.Contains(tool) || text.Length < options.MinChars

@@ -31,7 +31,7 @@ using IChatClient chat = new ChatClientBuilder(
             .GetChatClient(openRouter.Model)
             .AsIChatClient())
     // 2. Opt in, explicitly: without this call nothing is decorated.
-    .UseFunctionInvocation(configure: c => c.UseGascoigne(
+    .UseFunctionInvocation(configure: options => options.UseGascoigne(
         gascoigne, new GascoigneToolOptions { Skip = ["retrieve_original"] }))
     .Build();
 

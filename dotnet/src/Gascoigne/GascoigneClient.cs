@@ -119,8 +119,8 @@ public sealed class GascoigneClient : IDisposable
         }
     }
 
-    private static bool IsTransient(Exception e) =>
-        e is HttpRequestException
+    private static bool IsTransient(Exception error) =>
+        error is HttpRequestException
             or TaskCanceledException
             or JsonException
             or NotSupportedException
@@ -397,8 +397,8 @@ public sealed class GascoigneClient : IDisposable
             ["model"] = query.Model,
             ["since"] = Rfc3339(query.Since),
         };
-        return await ReadAsync<List<Total>>("/sdk/v1/stats", fields, (e, q) => e.Stats(q), ct)
-            ?? [];
+        return await ReadAsync<List<Total>>(
+            "/sdk/v1/stats", fields, (engine, body) => engine.Stats(body), ct) ?? [];
     }
 
     /// <summary>The recorded runs, newest first; empty on any failure.</summary>
@@ -416,8 +416,8 @@ public sealed class GascoigneClient : IDisposable
                 ? query.Before.ToString(CultureInfo.InvariantCulture) : null,
             ["limit"] = query.Limit > 0 ? query.Limit.ToString(CultureInfo.InvariantCulture) : null,
         };
-        return await ReadAsync<List<Run>>("/sdk/v1/recent", fields, (e, q) => e.Recent(q), ct)
-            ?? [];
+        return await ReadAsync<List<Run>>(
+            "/sdk/v1/recent", fields, (engine, body) => engine.Recent(body), ct) ?? [];
     }
 
     private static string? Rfc3339(DateTimeOffset? when) =>
@@ -432,8 +432,8 @@ public sealed class GascoigneClient : IDisposable
         where T : class
     {
         var set = fields
-            .Where(f => !string.IsNullOrEmpty(f.Value))
-            .ToDictionary(f => f.Key, f => f.Value!);
+            .Where(field => !string.IsNullOrEmpty(field.Value))
+            .ToDictionary(field => field.Key, field => field.Value!);
         try
         {
             if (!await ReadyAsync(ct))
@@ -444,16 +444,17 @@ public sealed class GascoigneClient : IDisposable
             if (_engine is { } engine)
             {
                 var doc = set.ToDictionary(
-                    f => f.Key,
-                    f => f.Key is "before" or "limit"
-                        ? (object)long.Parse(f.Value, CultureInfo.InvariantCulture)
-                        : f.Value);
+                    field => field.Key,
+                    field => field.Key is "before" or "limit"
+                        ? (object)long.Parse(field.Value, CultureInfo.InvariantCulture)
+                        : field.Value);
                 var answer = viaEngine(engine, JsonSerializer.Serialize(doc));
                 return JsonSerializer.Deserialize<T>(answer);
             }
 
-            var query = string.Join("&", set.Select(f => Uri.EscapeDataString(f.Key) + "="
-                + Uri.EscapeDataString(f.Value).Replace("%20", "+", StringComparison.Ordinal)));
+            var query = string.Join("&", set.Select(field =>
+                Uri.EscapeDataString(field.Key) + "="
+                + Uri.EscapeDataString(field.Value).Replace("%20", "+", StringComparison.Ordinal)));
             var url = $"{BaseUrl}{path}{(query.Length > 0 ? "?" + query : "")}";
             using var response = await _http.GetAsync(url, ct);
             return response.IsSuccessStatusCode

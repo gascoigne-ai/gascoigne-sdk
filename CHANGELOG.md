@@ -10,6 +10,8 @@ changed for you, in plain words.
 
 ### Changed
 
+- .NET: one-letter parameters and closure arguments now have full names. All renamed ones are private or
+  internal, so no public parameter name changes and named-argument callers keep working.
 - Python: wire answers are parsed once into typed models (`Health`, `Result`, `Total`, `Run`). `Outcome` and
   `Route` are `StrEnum`s, so comparisons with plain strings keep working. A server answer without a required field
   or with a wrongly typed one is now rejected instead of filled with zeros; `Run.route` is `None` when not recorded.

@@ -43,7 +43,7 @@ internal sealed class NativeEngine : IDisposable
     private delegate void Close(ulong handle);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void Free(nint s);
+    private delegate void Free(nint pointer);
 
     internal NativeEngine(EmbeddedSettings settings, string? path)
     {
@@ -218,7 +218,8 @@ internal sealed class NativeEngine : IDisposable
         foreach (var dir in SystemDirs())
         {
             looked.Add(dir);
-            var found = LibraryNames.Select(n => Path.Combine(dir, n)).FirstOrDefault(File.Exists);
+            var found = LibraryNames.Select(name => Path.Combine(dir, name))
+                .FirstOrDefault(File.Exists);
             if (found is not null)
             {
                 return found;

@@ -67,7 +67,7 @@ public static class Kit
 
     private static string Preview(string text)
     {
-        var rows = text.Split('\n').Select(r => r[..Math.Min(r.Length, 72)]).ToList();
+        var rows = text.Split('\n').Select(row => row[..Math.Min(row.Length, 72)]).ToList();
         var shown = rows.Take(8).ToList();
         if (rows.Count > 8)
         {

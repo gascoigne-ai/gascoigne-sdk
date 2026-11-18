@@ -60,7 +60,7 @@ public sealed class ClientTests : IDisposable
         Assert.Equal("again", await g.OptimizeAsync("again"));
         Assert.Null(await g.ProxyBaseUrlAsync());
         Assert.Equal("", await g.RawAsync("x"));
-        Assert.Single(warnings, w => w.Contains("not found on PATH"));
+        Assert.Single(warnings, warning => warning.Contains("not found on PATH"));
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public sealed class ClientTests : IDisposable
         {
             Agent = "demo",
             Addr = Serve(1, 200),
-            OnResult = (_, r) => seen.Add(r.RawId),
+            OnResult = (_, result) => seen.Add(result.RawId),
         });
         var text = string.Concat(Enumerable.Repeat("long ", 100));
         var res = await g.OptimizeResultAsync(text, new Attrs { Tool = "grep" });

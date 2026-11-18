@@ -61,7 +61,7 @@ public sealed class FunctionInvocationTests : IDisposable
             CancellationToken cancellationToken = default)
         {
             var result = messages
-                .SelectMany(m => m.Contents)
+                .SelectMany(message => message.Contents)
                 .OfType<FunctionResultContent>()
                 .FirstOrDefault();
             if (result is null)
@@ -93,7 +93,7 @@ public sealed class FunctionInvocationTests : IDisposable
     {
         var model = new ScriptedModel();
         var client = new ChatClientBuilder(model)
-            .UseFunctionInvocation(configure: c => configure?.Invoke(c))
+            .UseFunctionInvocation(configure: builder => configure?.Invoke(builder))
             .Build();
         var tool = AIFunctionFactory.Create(() => Big, "search_logs");
         await client.GetResponseAsync("what went wrong?", new ChatOptions { Tools = [tool] });
@@ -104,7 +104,7 @@ public sealed class FunctionInvocationTests : IDisposable
     public async Task ResultsAreShortenedWhenTheApplicationOptsIn()
     {
         using var gascoigne = Gascoigne();
-        var seen = await RunAsync(c => c.UseGascoigne(gascoigne));
+        var seen = await RunAsync(builder => builder.UseGascoigne(gascoigne));
         Assert.Equal("short [full: gascoigne raw abc]", seen);
     }
 
@@ -120,9 +120,9 @@ public sealed class FunctionInvocationTests : IDisposable
     {
         using var gascoigne = Gascoigne();
         var options = new GascoigneToolOptions { Skip = ["search_logs"] };
-        Assert.Equal(Big, await RunAsync(c => c.UseGascoigne(gascoigne, options)));
+        Assert.Equal(Big, await RunAsync(builder => builder.UseGascoigne(gascoigne, options)));
         var small = new GascoigneToolOptions { MinChars = 100_000 };
-        Assert.Equal(Big, await RunAsync(c => c.UseGascoigne(gascoigne, small)));
+        Assert.Equal(Big, await RunAsync(builder => builder.UseGascoigne(gascoigne, small)));
         Assert.Equal(0, _optimizeCalls);
     }
 }

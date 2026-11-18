@@ -50,9 +50,9 @@ public sealed class RetrieveOriginalTests : IDisposable
         return new GascoigneClient(new GascoigneOptions { Addr = $"127.0.0.1:{port}" });
     }
 
-    private static async Task<string> Call(AIFunction f, Dictionary<string, object?> args)
+    private static async Task<string> Call(AIFunction function, Dictionary<string, object?> args)
     {
-        var result = await f.InvokeAsync(new AIFunctionArguments(args));
+        var result = await function.InvokeAsync(new AIFunctionArguments(args));
         return ((JsonElement)result!).GetString()!;
     }
 
@@ -70,11 +70,11 @@ public sealed class RetrieveOriginalTests : IDisposable
         var props = f.JsonSchema.GetProperty("properties");
         Assert.Equal(
             ["rawId", "grep", "lines"],
-            props.EnumerateObject().Select(p => p.Name).ToArray());
+            props.EnumerateObject().Select(property => property.Name).ToArray());
         Assert.Equal(
             ["rawId"],
             f.JsonSchema.GetProperty("required").EnumerateArray()
-                .Select(e => e.GetString()!).ToArray());
+                .Select(element => element.GetString()!).ToArray());
     }
 
     // The fixture ends with a newline, so this implementation counts an empty 401st row
@@ -87,7 +87,7 @@ public sealed class RetrieveOriginalTests : IDisposable
         var result = await Call(f, new() { ["rawId"] = "a4e762ac" });
         var rows = Original.ReplaceLineEndings("\n").Split('\n');
         Assert.Equal(401, rows.Length);
-        var expected = rows.Take(200).Select((r, i) => $"{i + 1}: {r}")
+        var expected = rows.Take(200).Select((row, i) => $"{i + 1}: {row}")
             .Append("... 201 more lines; narrow with grep or lines");
         Assert.Equal(string.Join('\n', expected), result);
         Assert.EndsWith("/sdk/v1/raw/a4e762ac", _lastPath);
