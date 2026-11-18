@@ -128,7 +128,8 @@ def _events(after: int = 0) -> list[dict[str, Any]]:
             events = json.load(r)
     except OSError:
         return []
-    return sorted((e for e in events if e.get("pipeline") == "proxy"), key=lambda e: e["id"])
+    proxied = (event for event in events if event.get("pipeline") == "proxy")
+    return sorted(proxied, key=lambda event: event["id"])
 
 
 def _await_results(after: int) -> list[dict[str, Any]]:

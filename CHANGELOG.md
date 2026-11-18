@@ -13,6 +13,9 @@ changed for you, in plain words.
 - Python: wire answers are parsed once into typed models (`Health`, `Result`, `Total`, `Run`). `Outcome` and
   `Route` are `StrEnum`s, so comparisons with plain strings keep working. A server answer without a required field
   or with a wrongly typed one is now rejected instead of filled with zeros; `Run.route` is `None` when not recorded.
+- Python: one-letter parameters have full names. The only public change is the wrappers returned by
+  `wrap_tool`, whose catch-all parameters are now `*args` and `**kwargs` (were `*a`, `**kw`); they are variadic, so
+  callers are not affected.
 
 ## [0.11.0] - 2026-11-05
 

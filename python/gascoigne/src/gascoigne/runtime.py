@@ -308,15 +308,15 @@ class Runtime:
         if inspect.iscoroutinefunction(fn):
 
             @functools.wraps(fn)
-            async def awrapper(*a: Any, **kw: Any) -> Any:
-                out = await fn(*a, **kw)
+            async def awrapper(*args: Any, **kwargs: Any) -> Any:
+                out = await fn(*args, **kwargs)
                 return self.optimize(out, tool=tool) if isinstance(out, str) else out
 
             return cast(F, awrapper)
 
         @functools.wraps(fn)
-        def wrapper(*a: Any, **kw: Any) -> Any:
-            out = fn(*a, **kw)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            out = fn(*args, **kwargs)
             return self.optimize(out, tool=tool) if isinstance(out, str) else out
 
         return cast(F, wrapper)
