@@ -20,14 +20,13 @@ import httpx
 from gascoigne.models import OptimizeRequest, Result, Run, Stats, Total
 from gascoigne.native import Native, NativeError, Settings
 from gascoigne.retrieve import select
+from gascoigne.state import BREAKER_PAUSE, Event, Machine, State
 
 log = logging.getLogger("gascoigne")
 
 PROTO = 1
 DEFAULT_ADDR = "127.0.0.1:7878"
 INSTALL_HINT = "mise use -g go:github.com/gascoigne-ai/gascoigne-cli/cmd/gascoigne"
-BREAKER_FAILURES = 5
-BREAKER_PAUSE = 60.0
 MODES = ("proxy", "native")
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -58,11 +57,7 @@ class Runtime:
         # called with (original, result) after each optimized call
         self.on_result = on_result
         self._lock = threading.Lock()
-        # None until probed
-        self._available: bool | None = None
-        self._failures = 0
-        self._paused_until = 0.0
-        self._warned = False
+        self._machine = Machine()
         self._client: httpx.Client | None = None
         self._stats = Stats()
 
@@ -80,8 +75,7 @@ class Runtime:
         )
 
     def _warn(self, msg: str) -> None:
-        if not self._warned:
-            self._warned = True
+        if self._machine.first_warning():
             log.warning("%s", msg)
 
     def _http(self) -> httpx.Client:
@@ -89,68 +83,82 @@ class Runtime:
             self._client = httpx.Client(base_url=self.base_url, timeout=self.timeout)
         return self._client
 
-    def _healthy(self) -> bool:
+    def _health(self) -> Event | None:
+        """HEALTH_OK, HEALTH_MISMATCH, or None when the server does not answer."""
         try:
             r = httpx.get(f"{self.base_url}/sdk/v1/health", timeout=0.5)
             if r.status_code != 200:
-                return False
+                return None
             proto = r.json().get("proto")
         except (httpx.HTTPError, ValueError):
-            return False
+            return None
         if proto != PROTO:
             self._warn(
                 f"gascoigne server speaks proto {proto}, SDK {PROTO}; running without optimization"
             )
-            return False
-        return True
+            return Event.HEALTH_MISMATCH
+        return Event.HEALTH_OK
 
-    def _start_server(self) -> bool:
+    def _start_server(self) -> Event:
+        """Start the CLI server and poll its health; returns the event for the outcome."""
         exe = os.environ.get("GASCOIGNE_BIN") or shutil.which("gascoigne")
         if not exe:
             self._warn(
                 "gascoigne-cli not found on PATH; running without optimization. "
                 f"Install: {INSTALL_HINT}"
             )
-            return False
+            return Event.NO_CLI
         try:
             subprocess.run([exe, "server", "start"], capture_output=True, timeout=10, check=False)
         except (OSError, subprocess.SubprocessError) as e:
             self._warn(f"could not start gascoigne server ({e}); running without optimization")
-            return False
+            return Event.START_FAILED
         deadline = time.monotonic() + 3.0
         while time.monotonic() < deadline:
-            if self._healthy():
-                return True
+            if self._health() is Event.HEALTH_OK:
+                return Event.POLL_OK
             time.sleep(0.1)
         self._warn("gascoigne server did not come up; running without optimization")
-        return False
+        return Event.POLL_TIMEOUT
+
+    def _probe(self) -> None:
+        """Leave START: the first call decides native, ready, mismatch or missing."""
+        now = time.monotonic()
+        if self._native is not None:
+            self._machine.apply(Event.FIRST_NATIVE, now)
+            return
+        self._machine.apply(Event.FIRST_PROXY, now)
+        health = self._health()
+        self._machine.apply(health or self._start_server(), time.monotonic())
+
+    @property
+    def state(self) -> State:
+        """The state now. The environment kill switch overrides the stored state."""
+        if self._disabled():
+            return State.OFF
+        return self._machine.at(time.monotonic())
 
     def ready(self) -> bool:
         """True when optimize calls will be tried. Probes once, then remembers."""
         if self._disabled():
             return False
         with self._lock:
-            if self._available is None:
-                if self._native is not None:
-                    self._available = True
-                else:
-                    self._available = self._healthy() or self._start_server()
-            return self._available and time.monotonic() >= self._paused_until
+            if self._machine.state is State.START:
+                self._probe()
+            return self._machine.at(time.monotonic()) is State.READY
 
     def close(self) -> None:
         """Release the embedded engine, if any."""
         if self._native:
             self._native.close()
             self._native = None
-            self._available = False
+            self._machine.apply(Event.CLOSE, time.monotonic())
 
     def _failed(self, why: object) -> None:
         log.debug("gascoigne optimize failed: %s", why)
         with self._lock:
-            self._failures += 1
-            if self._failures >= BREAKER_FAILURES:
-                self._failures = 0
-                self._paused_until = time.monotonic() + BREAKER_PAUSE
+            self._machine.apply(Event.OPTIMIZE_FAILED, time.monotonic())
+            if self._machine.at(time.monotonic()) is State.OPEN_UNTIL:
                 log.debug("gascoigne breaker open for %ss", BREAKER_PAUSE)
 
     def optimize_result(
@@ -180,7 +188,7 @@ class Runtime:
             self._failed(e)
             return Result(text)
         with self._lock:
-            self._failures = 0
+            self._machine.apply(Event.OPTIMIZE_OK, time.monotonic())
             self._stats = Stats(
                 self._stats.raw_tokens + out.raw_tokens,
                 self._stats.out_tokens + (out.out_tokens or out.raw_tokens),
