@@ -59,8 +59,8 @@ def run(*cmd: str, cwd: Path | None = None) -> None:
     subprocess.run(cmd, cwd=cwd, check=True)
 
 
-def bundle(source: Path, p: Platform) -> None:
-    run(sys.executable, "scripts/bundle_native.py", str(source), "--platform", p.key)
+def bundle(source: Path, platform: Platform) -> None:
+    run(sys.executable, "scripts/bundle_native.py", str(source), "--platform", platform.key)
 
 
 def version(path: str, pattern: str) -> str:
@@ -69,27 +69,27 @@ def version(path: str, pattern: str) -> str:
     return match.group(1)
 
 
-def python(p: Platform, out: Path) -> None:
+def python(platform: Platform, out: Path) -> None:
     with tempfile.TemporaryDirectory() as tmp:
         run("uv", "build", "--wheel", "--out-dir", tmp, cwd=Path("python/gascoigne-native"))
         wheel = next(Path(tmp).glob("*.whl"))
         run("uvx", "wheel", "tags", "--python-tag", "py3", "--abi-tag", "none",
-            "--platform-tag", p.py_tag, "--remove", str(wheel))
+            "--platform-tag", platform.py_tag, "--remove", str(wheel))
         for tagged in Path(tmp).glob("*.whl"):
             shutil.move(tagged, out / tagged.name)
 
 
-def npm(p: Platform, out: Path, ver: str) -> None:
+def npm(platform: Platform, out: Path, ver: str) -> None:
     with tempfile.TemporaryDirectory() as tmp:
         pkg = Path(tmp) / "pkg"
         shutil.copytree("typescript/native-template", pkg)
         manifest = {
-            "name": f"@gascoigne-ai/sdk-native-{p.npm_os}-{p.npm_cpu}",
+            "name": f"@gascoigne-ai/sdk-native-{platform.npm_os}-{platform.npm_cpu}",
             "version": ver,
-            "description": f"libgascoigne for {p.key}, for @gascoigne-ai/sdk native mode",
+            "description": f"libgascoigne for {platform.key}, for @gascoigne-ai/sdk native mode",
             "license": "Apache-2.0",
-            "os": [p.npm_os],
-            "cpu": [p.npm_cpu],
+            "os": [platform.npm_os],
+            "cpu": [platform.npm_cpu],
             "files": ["lib", "README.md"],
             "repository": "github:gascoigne-ai/gascoigne-sdk",
             "publishConfig": {"access": "public"},
@@ -110,7 +110,8 @@ def npm_meta(out: Path, ver: str) -> None:
             "license": "Apache-2.0",
             "files": ["README.md"],
             "optionalDependencies": {
-                f"@gascoigne-ai/sdk-native-{p.npm_os}-{p.npm_cpu}": ver for p in PLATFORMS
+                f"@gascoigne-ai/sdk-native-{platform.npm_os}-{platform.npm_cpu}": ver
+                for platform in PLATFORMS
             },
             "repository": "github:gascoigne-ai/gascoigne-sdk",
             "publishConfig": {"access": "public"},
@@ -119,16 +120,16 @@ def npm_meta(out: Path, ver: str) -> None:
         run("npm", "pack", "--pack-destination", str(out), cwd=pkg)
 
 
-def java(p: Platform, out: Path, ver: str) -> None:
+def java(platform: Platform, out: Path, ver: str) -> None:
     root = Path("java/native/src/main/resources")
-    jar = out / f"gascoigne-native-{ver}-{p.key}.jar"
+    jar = out / f"gascoigne-native-{ver}-{platform.key}.jar"
     with zipfile.ZipFile(jar, "w", zipfile.ZIP_STORED) as z:
-        for f in sorted((root / "gascoigne/native" / p.key).glob("*.gz")):
+        for f in sorted((root / "gascoigne/native" / platform.key).glob("*.gz")):
             z.write(f, f.relative_to(root).as_posix())
 
 
-def dotnet(p: Platform, out: Path) -> None:
-    run("dotnet", "pack", "dotnet/src/Gascoigne.Native", "-c", "Release", f"-p:Rid={p.rid}",
+def dotnet(platform: Platform, out: Path) -> None:
+    run("dotnet", "pack", "dotnet/src/Gascoigne.Native", "-c", "Release", f"-p:Rid={platform.rid}",
         "-o", str(out))
 
 
@@ -163,13 +164,13 @@ readme = "README.md"
 """
 
 
-def rust(p: Platform, out: Path, ver: str, core: str) -> None:
-    name = f"gascoigne-native-{p.key}"
+def rust(platform: Platform, out: Path, ver: str, core: str) -> None:
+    name = f"gascoigne-native-{platform.key}"
     crate = out / name
     skip = shutil.ignore_patterns("target", "tests", "Cargo.*")
     shutil.copytree("rust/native", crate, ignore=skip)
     shutil.copy("rust/native/build.rs", crate / "build.rs")
-    (crate / "Cargo.toml").write_text(RUST_VARIANT.format(key=p.key, ver=ver, core=core))
+    (crate / "Cargo.toml").write_text(RUST_VARIANT.format(key=platform.key, ver=ver, core=core))
     crate_file(crate, out)
 
 
@@ -184,13 +185,13 @@ def crate_file(crate: Path, out: Path) -> None:
 
 def rust_meta(out: Path, ver: str) -> None:
     targets, reexports = [], []
-    for p in PLATFORMS:
-        cond = f'cfg(all(target_os = "{p.rust_os}", target_arch = "{p.rust_arch}"))'
+    for platform in PLATFORMS:
+        cond = f'cfg(all(target_os = "{platform.rust_os}", target_arch = "{platform.rust_arch}"))'
         targets.append(
-            f"[target.'{cond}'.dependencies]\ngascoigne-native-{p.key} = \"{ver}\"\n"
+            f"[target.'{cond}'.dependencies]\ngascoigne-native-{platform.key} = \"{ver}\"\n"
         )
-        crate = f"gascoigne_native_{p.key.replace('-', '_')}"
-        cfg = f'#[cfg(all(target_os = "{p.rust_os}", target_arch = "{p.rust_arch}"))]'
+        crate = f"gascoigne_native_{platform.key.replace('-', '_')}"
+        cfg = f'#[cfg(all(target_os = "{platform.rust_os}", target_arch = "{platform.rust_arch}"))]'
         reexports.append(f"{cfg}\npub use {crate}::*;\n")
     crate = out / "gascoigne-native"
     (crate / "src").mkdir(parents=True)
@@ -226,17 +227,17 @@ def main() -> int:
     if not with_rust:
         print(f"skip Rust crates: gascoigne {core} is not on crates.io (publish it first)")
     present = {d.name for d in source.iterdir() if d.is_dir()}
-    for p in PLATFORMS:
-        if p.key not in present:
-            print(f"skip {p.key}: not in {source}")
+    for platform in PLATFORMS:
+        if platform.key not in present:
+            print(f"skip {platform.key}: not in {source}")
             continue
-        bundle(source, p)
-        python(p, out)
-        npm(p, out, ver)
-        java(p, out, ver)
-        dotnet(p, out)
+        bundle(source, platform)
+        python(platform, out)
+        npm(platform, out, ver)
+        java(platform, out, ver)
+        dotnet(platform, out)
         if with_rust:
-            rust(p, out, ver, core)
+            rust(platform, out, ver, core)
     npm_meta(out, ver)
     if with_rust:
         rust_meta(out, ver)
