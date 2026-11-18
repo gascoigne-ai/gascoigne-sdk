@@ -17,4 +17,6 @@ Shared with the other gascoigne repos: submodule `.harness/common`.
 @.harness/rules.md
 @.harness/code-style.md
 
+Architecture map per language: `.harness/architecture.md`. Update it in the same commit as structural changes.
+
 Task queue: `.harness/tasks/`, run with `/task-loop` (verify: `mise run check`).
