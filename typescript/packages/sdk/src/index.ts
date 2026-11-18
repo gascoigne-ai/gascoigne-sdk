@@ -40,13 +40,11 @@ interface OptimizeRequest extends Attrs {
   session?: string;
 }
 
-/** Response of `POST /sdk/v1/optimize`. */
-interface OptimizeResponse {
-  text: string;
-  raw_id?: string;
-  raw_tokens?: number;
-  out_tokens?: number;
-  skipped?: string;
+/** Body of `GET /sdk/v1/health`. */
+export interface Health {
+  version: string;
+  proto: number;
+  proxy: boolean;
 }
 
 export interface Stats {
@@ -68,6 +66,18 @@ export interface Total {
   last: string;
 }
 
+/** What happened to a recorded run. The server's set can grow, so other strings occur. */
+export type Outcome =
+  | "optimized"
+  | "unchanged"
+  | "bypassed"
+  | "rerequested"
+  | "error"
+  | (string & {});
+
+/** The optimizer chain a run took. Routes come from the server's config, so others occur. */
+export type Route = "default" | "fold" | "skill" | "prompt" | "tools" | "image" | (string & {});
+
 /** One recorded optimization. */
 export interface Run {
   id: number;
@@ -77,13 +87,14 @@ export interface Run {
   agent: string;
   model: string;
   command: string;
-  route: string;
+  /** Undefined when the server did not record one. */
+  route?: Route;
   optimizers: string[];
   rawTokens: number;
   outTokens: number;
   durationNs: number;
   rawId: string;
-  outcome: string;
+  outcome: Outcome;
   reason: string;
 }
 
@@ -112,38 +123,97 @@ export interface RunsQuery {
 
 type Wire = Record<string, unknown>;
 
-const str = (v: unknown): string => (typeof v === "string" ? v : "");
-const num = (v: unknown): number => (typeof v === "number" ? v : 0);
-const list = (v: unknown): Wire[] => (Array.isArray(v) ? (v as Wire[]) : []);
+function obj(v: unknown, what = "body"): Wire {
+  if (typeof v !== "object" || v === null || Array.isArray(v))
+    throw new Error(`${what} is not an object`);
+  return v as Wire;
+}
+
+function str(d: Wire, key: string, required = false): string {
+  const v = d[key];
+  if (v === undefined && !required) return "";
+  if (typeof v !== "string") throw new Error(`${key} is not a string`);
+  return v;
+}
+
+function int(d: Wire, key: string, required = false): number {
+  const v = d[key];
+  if (v === undefined && !required) return 0;
+  if (typeof v !== "number" || !Number.isInteger(v)) throw new Error(`${key} is not an integer`);
+  return v;
+}
+
+/** A missing or null list is empty. */
+function strs(d: Wire, key: string): string[] {
+  const v = d[key];
+  if (v === undefined || v === null) return [];
+  if (!Array.isArray(v) || !v.every((x) => typeof x === "string")) {
+    throw new Error(`${key} is not a list of strings`);
+  }
+  return [...v];
+}
+
+function many<T>(v: unknown, decode: (d: Wire) => T): T[] {
+  if (!Array.isArray(v)) throw new Error("body is not a list");
+  return v.map((d) => decode(obj(d, "item")));
+}
+
+/** Decode `GET /sdk/v1/health`; throws when the body is not one. */
+export function decodeHealth(v: unknown): Health {
+  const d = obj(v);
+  if (typeof d.proxy !== "boolean") throw new Error("proxy is not a boolean");
+  return { version: str(d, "version", true), proto: int(d, "proto", true), proxy: d.proxy };
+}
+
+/** Decode a `POST /sdk/v1/optimize` answer; throws when the body is not one. */
+export function decodeResult(v: unknown): Result {
+  const d = obj(v);
+  return {
+    text: str(d, "text", true),
+    rawId: str(d, "raw_id"),
+    rawTokens: int(d, "raw_tokens", true),
+    outTokens: int(d, "out_tokens", true),
+    skipped: str(d, "skipped"),
+  };
+}
 
 const toTotal = (d: Wire): Total => ({
-  group: str(d.group),
-  runs: num(d.runs),
-  optimized: num(d.optimized),
-  failed: num(d.failed),
-  rawTokens: num(d.raw_tokens),
-  outTokens: num(d.out_tokens),
-  saved: num(d.saved),
-  first: str(d.first),
-  last: str(d.last),
+  group: str(d, "group", true),
+  runs: int(d, "runs", true),
+  optimized: int(d, "optimized", true),
+  failed: int(d, "failed", true),
+  rawTokens: int(d, "raw_tokens", true),
+  outTokens: int(d, "out_tokens", true),
+  saved: int(d, "saved", true),
+  first: str(d, "first"),
+  last: str(d, "last"),
 });
 
-const toRun = (d: Wire): Run => ({
-  id: num(d.id),
-  time: str(d.time),
-  session: str(d.session),
-  agent: str(d.agent),
-  model: str(d.model),
-  command: str(d.command),
-  route: str(d.route),
-  optimizers: list(d.optimizers).map(String),
-  rawTokens: num(d.raw_tokens),
-  outTokens: num(d.out_tokens),
-  durationNs: num(d.duration_ns),
-  rawId: str(d.raw_id),
-  outcome: str(d.outcome),
-  reason: str(d.reason),
-});
+const toRun = (d: Wire): Run => {
+  const route = str(d, "route");
+  return {
+    id: int(d, "id", true),
+    time: str(d, "time", true),
+    session: str(d, "session"),
+    agent: str(d, "agent"),
+    model: str(d, "model"),
+    command: str(d, "command"),
+    ...(route ? { route } : {}),
+    optimizers: strs(d, "optimizers"),
+    rawTokens: int(d, "raw_tokens", true),
+    outTokens: int(d, "out_tokens", true),
+    durationNs: int(d, "duration_ns", true),
+    rawId: str(d, "raw_id"),
+    outcome: str(d, "outcome", true),
+    reason: str(d, "reason"),
+  };
+};
+
+/** Decode the body of `GET /sdk/v1/stats`. */
+export const decodeTotals = (v: unknown): Total[] => many(v, toTotal);
+
+/** Decode the body of `GET /sdk/v1/recent`, order kept. */
+export const decodeRuns = (v: unknown): Run[] => many(v, toRun);
 
 /** The query fields that are set, in the wire's names, as strings. */
 function query(fields: Record<string, string | number | Date | undefined>): Record<string, string> {
@@ -186,17 +256,6 @@ function findOnPath(name: string): string | undefined {
     }
   }
   return undefined;
-}
-
-function toResult(d: OptimizeResponse): Result {
-  if (typeof d.text !== "string") throw new Error("bad response");
-  return {
-    text: d.text,
-    rawId: d.raw_id ?? "",
-    rawTokens: d.raw_tokens ?? 0,
-    outTokens: d.out_tokens ?? 0,
-    skipped: d.skipped ?? "",
-  };
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -246,7 +305,7 @@ export class Runtime {
     try {
       const r = await fetch(`${this.baseUrl}/sdk/v1/health`, { signal: AbortSignal.timeout(500) });
       if (!r.ok) return false;
-      const { proto } = (await r.json()) as { proto?: number };
+      const { proto } = decodeHealth(await r.json());
       if (proto !== PROTO) {
         this.warn(
           `gascoigne server speaks proto ${proto}, SDK ${PROTO}; running without optimization`,
@@ -339,7 +398,7 @@ export class Runtime {
       // undefined fields are not serialized
       const body = JSON.stringify(request);
       const out = this.native
-        ? toResult(JSON.parse(await this.native.optimize(body)) as OptimizeResponse)
+        ? decodeResult(JSON.parse(await this.native.optimize(body)))
         : await this.post(body);
       this.failures = 0;
       this.total = {
@@ -362,7 +421,7 @@ export class Runtime {
       signal: AbortSignal.timeout(this.opts.timeoutMs ?? 5000),
     });
     if (!r.ok) throw new Error(`status ${r.status}`);
-    return toResult((await r.json()) as OptimizeResponse);
+    return decodeResult(await r.json());
   }
 
   private notify(original: string, result: Result): void {
@@ -404,9 +463,10 @@ export class Runtime {
       model: q.model,
       since: q.since,
     });
-    return list(
-      await this.read("/sdk/v1/stats", params, (p) => this.native?.stats(JSON.stringify(p))),
-    ).map(toTotal);
+    const body = await this.read("/sdk/v1/stats", params, (p) =>
+      this.native?.stats(JSON.stringify(p)),
+    );
+    return this.decoded(body, decodeTotals);
   }
 
   /** The recorded runs, newest first; empty on any failure. */
@@ -427,7 +487,17 @@ export class Runtime {
           ...(p.limit ? { limit: Number(p.limit) } : {}),
         }),
       );
-    return list(await this.read("/sdk/v1/recent", params, native)).map(toRun);
+    return this.decoded(await this.read("/sdk/v1/recent", params, native), decodeRuns);
+  }
+
+  /** Decode a ledger body; empty when there is none or it is malformed. */
+  private decoded<T>(body: unknown, decode: (v: unknown) => T[]): T[] {
+    if (body === undefined) return [];
+    try {
+      return decode(body);
+    } catch {
+      return [];
+    }
   }
 
   /** A ledger read: the parsed JSON, or undefined on any failure. */

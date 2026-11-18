@@ -18,7 +18,8 @@ const urls: string[] = [];
 async function serve(status = 200) {
   srv = createServer((req, res) => {
     res.setHeader("content-type", "application/json");
-    if (req.url === "/sdk/v1/health") return res.end(JSON.stringify({ version: "t", proto: 1 }));
+    if (req.url === "/sdk/v1/health")
+      return res.end(JSON.stringify({ version: "t", proto: 1, proxy: true }));
     urls.push(req.url ?? "");
     res.statusCode = status;
     if (status !== 200) return res.end("boom");
@@ -45,6 +46,7 @@ async function serve(status = 200) {
             session: "s1",
             raw_tokens: 100,
             out_tokens: 10,
+            duration_ns: 1000,
             raw_id: "abc",
             outcome: "optimized",
             optimizers: ["log"],
