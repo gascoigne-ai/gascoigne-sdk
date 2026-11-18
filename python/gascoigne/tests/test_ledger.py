@@ -112,7 +112,7 @@ def test_settings_serialize_the_ledger():
     assert json.loads(Settings().to_json()) == {}
 
 
-@pytest.mark.skipif(not LIB.exists(), reason="build native/ first: mise run native:check")
+@pytest.mark.skipif(not LIB.exists(), reason="build native/ first: make check-native")
 def test_embedded_memory_ledger(monkeypatch, tmp_path):
     monkeypatch.setenv("GASCOIGNE_LIB", str(LIB))
     monkeypatch.setenv("GASCOIGNE_LEDGER", "")

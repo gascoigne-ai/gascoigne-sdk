@@ -46,5 +46,5 @@ cp .env.example .env     # in the repo root; put your OPENROUTER_API_KEY in it
 | Rust | `cd demos/rust/plain && cargo run` (native: `cargo run --bin native`) |
 
 No key yet? `GASCOIGNE_DEMO_DRY=1` builds each agent and calls its tool without the LLM
-(`mise run demo` does that for all `wrap` demos), and `mise run demo:proxy` runs the `proxy` and
+(`make demo` does that for all `wrap` demos), and `make demo-proxy` runs the `proxy` and
 `auto` demos for real against a fake LLM.

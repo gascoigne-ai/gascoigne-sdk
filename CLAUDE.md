@@ -4,8 +4,8 @@ SDKs that embed gascoigne-cli token optimization into agent frameworks. Contract
 (server side: `gascoigne-cli/cmd/gascoigne/sdk.go`). Tools via `mise install`; Python via uv.
 
 ## Commands
-- `mise run check` - lint, types, tests; must pass before done
-- `mise run e2e` - against a real binary (`GASCOIGNE_BIN=...`)
+- `make check` - lint, types, tests; must pass before done
+- `make e2e` - against a real binary (`GASCOIGNE_BIN=...`)
 - demos: `demos/python`, see README
 
 Shared with the other gascoigne repos: submodule `.harness/common`.
@@ -19,4 +19,4 @@ Shared with the other gascoigne repos: submodule `.harness/common`.
 
 Architecture map per language: `.harness/architecture.md`. Update it in the same commit as structural changes.
 
-Task queue: `.harness/tasks/`, run with `/task-loop` (verify: `mise run check`).
+Task queue: `.harness/tasks/`, run with `/task-loop` (verify: `make check`).

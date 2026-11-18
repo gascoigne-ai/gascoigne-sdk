@@ -6,7 +6,7 @@ Usage: scripts/bundle_native.py [DIR] [--platform <os>-<arch>]
 DIR holds one folder per platform, `<os>-<arch>/<library file>` (os: linux, darwin, windows;
 arch: amd64, arm64), as the release archives unpack. `--platform` keeps just that one, which is
 how scripts/package_native.py builds a package per platform. Without DIR the library built by
-`mise run native:build` is bundled for the current platform only. Each package gets the same
+`make native-build` is bundled for the current platform only. Each package gets the same
 layout, `<os>-<arch>/<library file>.gz`; see spec/native.md.
 """
 
@@ -40,7 +40,7 @@ def platforms(source: Path | None) -> dict[str, Path]:
     if source is None:
         built = [p for p in (Path("native/dist") / n for n in LIBS) if p.is_file()]
         if not built:
-            sys.exit("no native/dist library: run `mise run native:build` or pass DIR")
+            sys.exit("no native/dist library: run `make native-build` or pass DIR")
         return {host(): built[0]}
     found = {d.name: f for d in sorted(source.iterdir()) for f in d.iterdir() if f.name in LIBS}
     if not found:

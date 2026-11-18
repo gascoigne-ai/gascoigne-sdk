@@ -25,7 +25,7 @@ def test_system_directories_are_searched(monkeypatch, tmp_path):
     assert find_library()[0] == lib
 
 
-@pytest.mark.skipif(not LIB.exists(), reason="build native/ first: mise run native:check")
+@pytest.mark.skipif(not LIB.exists(), reason="build native/ first: make check-native")
 def test_embedded_optimizes_and_returns_original(monkeypatch, tmp_path):
     monkeypatch.setenv("GASCOIGNE_LIB", str(LIB))
     for var in ("GASCOIGNE_SDK", "GASCOIGNE_SERVER"):
@@ -58,7 +58,7 @@ def test_unpack_is_idempotent_and_checks_content(monkeypatch, tmp_path):
     assert unpack(bundled).read_bytes() == b"library bytes"
 
 
-@pytest.mark.skipif(not LIB.exists(), reason="build native/ first: mise run native:build")
+@pytest.mark.skipif(not LIB.exists(), reason="build native/ first: make native-build")
 def test_bundle_is_found_and_unpacked_to_tmp(monkeypatch, tmp_path):
     import gascoigne_native
 

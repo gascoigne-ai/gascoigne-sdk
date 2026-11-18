@@ -28,7 +28,7 @@ native crates depend on it; until it is on crates.io the packager skips the Rust
 3. `git tag py-v0.2.0 && git push origin py-v0.2.0`.
 
 The workflow checks that the tag matches the files (`scripts/check_version.py`), runs the language's
-`mise run <lang>:check`, builds the artifacts, writes `checksums.txt`, signs everything (build
+`make check-<lang>`, builds the artifacts, writes `checksums.txt`, signs everything (build
 provenance and a cosign signature, see [`verifying.md`](verifying.md)) and creates the GitHub release
 with generated notes. None of this needs a secret.
 

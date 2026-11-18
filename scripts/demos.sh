@@ -26,7 +26,7 @@ echo "-- rust / plain"
 (cd demos/rust/plain && cargo run -q | tail -2)
 
 # Native mode: the engine runs in the demo's own process, no server. Needs libgascoigne
-# (`mise run native:build`, or GASCOIGNE_LIB).
+# (`make native-build`, or GASCOIGNE_LIB).
 export GASCOIGNE_LIB="${GASCOIGNE_LIB:-$PWD/native/dist/libgascoigne.so}"
 if [ -f "$GASCOIGNE_LIB" ]; then
   for demo in langchain langgraph agno google-adk openai-agents pydantic-ai smolagents; do
@@ -49,5 +49,5 @@ if [ -f "$GASCOIGNE_LIB" ]; then
   echo "-- native / rust plain"
   (cd demos/rust/plain && cargo run -q --bin native | tail -2)
 else
-  echo "-- native demos skipped: no libgascoigne (mise run native:build)"
+  echo "-- native demos skipped: no libgascoigne (make native-build)"
 fi

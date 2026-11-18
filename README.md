@@ -23,7 +23,7 @@ git clone https://github.com/gascoigne-ai/gascoigne-sdk && cd gascoigne-sdk/demo
 GASCOIGNE_DEMO_DRY=1 uv run --extra langgraph python langgraph/wrap.py
 ```
 
-Prefer no CLI at all? Build the engine as a library once (`mise run native:build`) and run the
+Prefer no CLI at all? Build the engine as a library once (`make native-build`) and run the
 native variant of the same demo:
 
 ```sh
@@ -209,9 +209,9 @@ cp .env.example .env        # put your OPENROUTER_API_KEY in it (the file is git
 | `auto` | `python/langgraph/auto.py`, `java/spring-ai/auto`, `dotnet/microsoft-extensions-ai/auto` |
 | `native` | Python (all seven), TypeScript (all four), `java/spring-ai/native`, `java/langchain4j/native`, `dotnet/microsoft-extensions-ai/native`, `rust/plain` (`--bin native`), `native/examples/plain` (Go) |
 
-Run native demos with `GASCOIGNE_LIB=native/dist/libgascoigne.so` (`mise run native:build`).
+Run native demos with `GASCOIGNE_LIB=native/dist/libgascoigne.so` (`make native-build`).
 No key yet? `GASCOIGNE_DEMO_DRY=1` builds each agent and calls its tool without the LLM, and
-`mise run demo` does that for all of them; `mise run demo:proxy` runs the proxy and auto demos for
+`make demo` does that for all of them; `make demo-proxy` runs the proxy and auto demos for
 real with a fake LLM ([`scripts/fake_llm.py`](scripts/fake_llm.py)) in place of OpenRouter.
 
 ## Settings
@@ -240,8 +240,8 @@ sends, point it at `proxy_base_url("openai")`; for OpenRouter set
 
 ```sh
 mise install        # every toolchain: uv, node, pnpm, go, java, maven, dotnet, rust
-mise run check      # lint + tests for all six SDKs
-mise run e2e        # against a real binary: GASCOIGNE_BIN=../gascoigne-cli/bin/gascoigne
+make check       # lint + tests for all six SDKs
+make e2e        # against a real binary: GASCOIGNE_BIN=../gascoigne-cli/bin/gascoigne
 ```
 
 Rules for contributors: [`.harness/rules.md`](.harness/rules.md).
