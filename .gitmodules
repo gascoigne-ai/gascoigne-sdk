@@ -2,3 +2,7 @@
 	path = .harness/common
 	url = git@github.com:gascoigne-ai/gascoigne-harness.git
 	branch = main
+[submodule "cli"]
+	path = cli
+	url = git@github.com:gascoigne-ai/gascoigne-cli.git
+	branch = main
