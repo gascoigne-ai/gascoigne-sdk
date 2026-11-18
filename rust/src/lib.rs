@@ -22,12 +22,13 @@ const BREAKER_PAUSE: Duration = Duration::from_secs(60);
 
 /// One optimize call: `text` is what the model should read.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
-#[serde(default)]
 pub struct Result {
     pub text: String,
+    #[serde(default)]
     pub raw_id: String,
     pub raw_tokens: u64,
     pub out_tokens: u64,
+    #[serde(default)]
     pub skipped: String,
 }
 
@@ -60,7 +61,6 @@ pub struct Stats {
 
 /// The recorded runs of one group, summed.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
-#[serde(default)]
 pub struct Total {
     pub group: String,
     pub runs: u64,
@@ -70,31 +70,104 @@ pub struct Total {
     pub out_tokens: u64,
     pub saved: i64,
     /// RFC 3339, empty when unknown.
+    #[serde(default)]
     pub first: String,
+    #[serde(default)]
     pub last: String,
 }
 
-/// One recorded optimization.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
-#[serde(default)]
+/// What happened to a recorded run. The server's set can grow: unknown values are kept.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(from = "String")]
+pub enum Outcome {
+    Optimized,
+    Unchanged,
+    Bypassed,
+    Rerequested,
+    Error,
+    Other(String),
+}
+
+impl From<String> for Outcome {
+    fn from(value: String) -> Self {
+        match value.as_str() {
+            "optimized" => Self::Optimized,
+            "unchanged" => Self::Unchanged,
+            "bypassed" => Self::Bypassed,
+            "rerequested" => Self::Rerequested,
+            "error" => Self::Error,
+            _ => Self::Other(value),
+        }
+    }
+}
+
+/// The optimizer chain a run took. Routes come from the server's config, so others occur.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(from = "String")]
+pub enum Route {
+    Default,
+    Fold,
+    Skill,
+    Prompt,
+    Tools,
+    Image,
+    Other(String),
+}
+
+impl From<String> for Route {
+    fn from(value: String) -> Self {
+        match value.as_str() {
+            "default" => Self::Default,
+            "fold" => Self::Fold,
+            "skill" => Self::Skill,
+            "prompt" => Self::Prompt,
+            "tools" => Self::Tools,
+            "image" => Self::Image,
+            _ => Self::Other(value),
+        }
+    }
+}
+
+/// A missing, null or empty route is `None`.
+fn route<'de, D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Option<Route>, D::Error> {
+    Ok(Option::<String>::deserialize(d)?
+        .filter(|name| !name.is_empty())
+        .map(Route::from))
+}
+
+/// A missing or null list is empty.
+fn list<'de, D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Vec<String>, D::Error> {
+    Ok(Option::<Vec<String>>::deserialize(d)?.unwrap_or_default())
+}
+
+/// One recorded optimization (`GET /sdk/v1/recent`).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Run {
     /// Run id, for paging with [`RunsQuery::before`].
     pub id: u64,
     /// RFC 3339.
     pub time: String,
-    pub session: String,
-    pub agent: String,
-    pub model: String,
-    pub command: String,
-    pub route: String,
-    pub optimizers: Vec<String>,
     pub raw_tokens: u64,
     pub out_tokens: u64,
     pub duration_ns: i64,
+    pub outcome: Outcome,
+    #[serde(default)]
+    pub session: String,
+    #[serde(default)]
+    pub agent: String,
+    #[serde(default)]
+    pub model: String,
+    #[serde(default)]
+    pub command: String,
+    /// `None` when the server did not record one.
+    #[serde(default, deserialize_with = "route")]
+    pub route: Option<Route>,
+    #[serde(default, deserialize_with = "list")]
+    pub optimizers: Vec<String>,
     /// Id of the stored original, see [`Runtime::raw`].
+    #[serde(default)]
     pub raw_id: String,
-    /// `optimized`, `unchanged`, `bypassed`, `rerequested` or `error`.
-    pub outcome: String,
+    #[serde(default)]
     pub reason: String,
 }
 
@@ -144,9 +217,30 @@ struct OptimizeRequest<'a> {
 }
 
 /// Response of `GET /sdk/v1/health`.
-#[derive(Deserialize)]
-struct Health {
-    proto: u32,
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct Health {
+    pub version: String,
+    pub proto: u32,
+    pub proxy: bool,
+}
+
+/// Query of a ledger read through the engine, which takes `before` and `limit` as numbers.
+#[derive(Serialize)]
+struct EngineQuery<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    by: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    session: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    agent: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    model: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    since: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    before: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limit: Option<u64>,
 }
 
 #[derive(Default)]
@@ -449,18 +543,22 @@ impl Runtime {
             .map(|(key, value)| (*key, value))
             .collect();
         if let Some(native) = &self.state().native {
-            // The library takes before and limit as numbers.
-            let doc: serde_json::Map<String, serde_json::Value> = set
-                .iter()
-                .map(|(key, value)| {
-                    let json = match (*key, value.parse::<u64>()) {
-                        ("before" | "limit", Ok(n)) => serde_json::Value::from(n),
-                        _ => serde_json::Value::from((*value).clone()),
-                    };
-                    ((*key).to_string(), json)
-                })
-                .collect();
-            let body = via_engine(native, &serde_json::Value::Object(doc).to_string()).ok()?;
+            let get = |key: &str| {
+                set.iter()
+                    .find(|(k, _)| *k == key)
+                    .map(|(_, value)| value.as_str())
+            };
+            let number = |key: &str| get(key).and_then(|value| value.parse().ok());
+            let query = EngineQuery {
+                by: get("by"),
+                session: get("session"),
+                agent: get("agent"),
+                model: get("model"),
+                since: get("since"),
+                before: number("before"),
+                limit: number("limit"),
+            };
+            let body = via_engine(native, &serde_json::to_string(&query).ok()?).ok()?;
             return serde_json::from_str(&body).ok();
         }
         let mut request = ureq::get(&format!("{}{path}", base_url())).timeout(self.timeout);

@@ -16,7 +16,10 @@ fn serve(proto: i64, optimize_status: u16) -> (String, Arc<AtomicUsize>, Arc<Mut
             let mut s = s.unwrap();
             let req = read_request(&mut s);
             let (status, body) = if req.starts_with("GET /sdk/v1/health") {
-                (200, format!(r#"{{"version":"t","proto":{proto}}}"#))
+                (
+                    200,
+                    format!(r#"{{"version":"t","proto":{proto},"proxy":true}}"#),
+                )
             } else if req.starts_with("POST /sdk/v1/optimize") {
                 p.fetch_add(1, Ordering::SeqCst);
                 *la.lock().unwrap() = req.clone();

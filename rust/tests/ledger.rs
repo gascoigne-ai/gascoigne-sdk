@@ -9,7 +9,8 @@ static ENV: Mutex<()> = Mutex::new(());
 const TOTALS: &str = r#"[{"group":"sdk","runs":2,"optimized":2,"failed":0,
 "raw_tokens":100,"out_tokens":40,"saved":60}]"#;
 const RUNS: &str = r#"[{"id":7,"time":"2026-11-01T10:00:00Z","session":"s1",
-"raw_tokens":100,"out_tokens":10,"raw_id":"abc","outcome":"optimized","optimizers":["log"]}]"#;
+"raw_tokens":100,"out_tokens":10,"duration_ns":1,
+"raw_id":"abc","outcome":"optimized","optimizers":["log"]}]"#;
 
 /// Tiny HTTP stub for health and the ledger routes; `status` answers the ledger ones. It records
 /// the request targets.
@@ -26,7 +27,7 @@ fn serve(status: u16) -> (String, Arc<Mutex<Vec<String>>>) {
             let req = String::from_utf8_lossy(&buf[..n]).to_string();
             let target = req.split_whitespace().nth(1).unwrap_or("").to_string();
             let (code, body) = if target.starts_with("/sdk/v1/health") {
-                (200, r#"{"version":"t","proto":1}"#.to_string())
+                (200, r#"{"version":"t","proto":1,"proxy":true}"#.to_string())
             } else {
                 log.lock().unwrap().push(target.clone());
                 let body = if status != 200 {
