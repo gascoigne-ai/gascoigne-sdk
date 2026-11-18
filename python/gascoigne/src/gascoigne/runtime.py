@@ -7,16 +7,17 @@ import inspect
 import logging
 import os
 import re
-import shutil
-import subprocess
 import threading
 import time
 from collections.abc import Callable
 from datetime import datetime, timezone
+from subprocess import SubprocessError
 from typing import Any, TypeVar, cast
 
 import httpx
 
+from gascoigne import process
+from gascoigne.http import ServerClient, health
 from gascoigne.models import OptimizeRequest, Result, Run, Stats, Total
 from gascoigne.native import Native, NativeError, Settings
 from gascoigne.retrieve import select
@@ -58,7 +59,7 @@ class Runtime:
         self.on_result = on_result
         self._lock = threading.Lock()
         self._machine = Machine()
-        self._client: httpx.Client | None = None
+        self._client: ServerClient | None = None
         self._stats = Stats()
 
     @property
@@ -78,19 +79,15 @@ class Runtime:
         if self._machine.first_warning():
             log.warning("%s", msg)
 
-    def _http(self) -> httpx.Client:
+    def _server(self) -> ServerClient:
         if self._client is None:
-            self._client = httpx.Client(base_url=self.base_url, timeout=self.timeout)
+            self._client = ServerClient(self.base_url, self.timeout)
         return self._client
 
     def _health(self) -> Event | None:
         """HEALTH_OK, HEALTH_MISMATCH, or None when the server does not answer."""
-        try:
-            r = httpx.get(f"{self.base_url}/sdk/v1/health", timeout=0.5)
-            if r.status_code != 200:
-                return None
-            proto = r.json().get("proto")
-        except (httpx.HTTPError, ValueError):
+        proto = health(self.base_url)
+        if proto is None:
             return None
         if proto != PROTO:
             self._warn(
@@ -101,7 +98,7 @@ class Runtime:
 
     def _start_server(self) -> Event:
         """Start the CLI server and poll its health; returns the event for the outcome."""
-        exe = os.environ.get("GASCOIGNE_BIN") or shutil.which("gascoigne")
+        exe = process.find_cli()
         if not exe:
             self._warn(
                 "gascoigne-cli not found on PATH; running without optimization. "
@@ -109,8 +106,8 @@ class Runtime:
             )
             return Event.NO_CLI
         try:
-            subprocess.run([exe, "server", "start"], capture_output=True, timeout=10, check=False)
-        except (OSError, subprocess.SubprocessError) as e:
+            process.start_server(exe)
+        except (OSError, SubprocessError) as e:
             self._warn(f"could not start gascoigne server ({e}); running without optimization")
             return Event.START_FAILED
         deadline = time.monotonic() + 3.0
@@ -181,9 +178,7 @@ class Runtime:
             if self._native:
                 out = self._native.optimize(request)
             else:
-                response = self._http().post("/sdk/v1/optimize", json=request.to_json())
-                response.raise_for_status()
-                out = Result.from_json(response.json())
+                out = self._server().optimize(request)
         except (httpx.HTTPError, NativeError, ValueError, KeyError, TypeError) as e:
             self._failed(e)
             return Result(text)
@@ -220,9 +215,7 @@ class Runtime:
         try:
             if self._native:
                 return self._native.raw(raw_id)
-            r = self._http().get(f"/sdk/v1/raw/{raw_id}")
-            r.raise_for_status()
-            return r.text
+            return self._server().raw(raw_id)
         except (httpx.HTTPError, NativeError) as e:
             self._failed(e)
             return ""
@@ -284,9 +277,7 @@ class Runtime:
         """GET a ledger route; raises on any failure, for the callers above to absorb."""
         if not self.ready():
             raise ValueError("gascoigne is not available")
-        response = self._http().get(path, params=query)
-        response.raise_for_status()
-        return response.json()
+        return self._server().get_json(path, query)
 
     def retrieve(self, raw_id: str, grep: str = "", lines: str = "") -> str:
         """Part of an original, for a model that needs what was folded.
