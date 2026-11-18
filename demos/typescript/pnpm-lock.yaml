@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  hono: '>=4.13.16'
+
 importers:
 
   .:
@@ -350,7 +353,7 @@ packages:
     resolution: {integrity: sha512-MxOm1asDh9j7c1D0KiWwppSbFgAQxTRO4YEhjMrJn3lF1BIcXenPdgjSGKDRfQmZdaTaMA8slQLETgVOKyJxFw==}
     peerDependencies:
       '@standard-schema/spec': ^1.0.0
-      hono: '>=4.11.2'
+      hono: '>=4.13.16'
 
   '@isaacs/ttlcache@2.1.5':
     resolution: {integrity: sha512-VwGZqqjAWPICTmxUZnbpEfO60LhPWzquik+bmyXGY7pYRn6diEvCI5i6Ca+J6o2y4vS73HrpuMTo2dOvUevH8w==}
@@ -788,10 +791,10 @@ packages:
   hono-openapi@1.3.5:
     resolution: {integrity: sha512-t1YpXno9oXa6400xi9rX6i1jKB0496VvikcVKpN/UY3s7yDDQqeCgnKlDr3rfkqxGvykq3+bgX/64eCm7UnUMA==}
     peerDependencies:
-      hono: ^4.11.2
+      hono: '>=4.13.16'
 
-  hono@4.13.13:
-    resolution: {integrity: sha512-CQ46U0ZkAGmbT/4UxdzzGJpacP2IeKgY4a5/tOI9AABbpOMfK739wfDXmv1usCk+3RkKj1hQy4/fjhiwa2xlrA==}
+  hono@4.13.19:
+    resolution: {integrity: sha512-KmXvQAXwcAHV+muzbIwoJ23niEB5nMoDVr9WcRkU8mvjUECm/1+7v4Jgp7P7a+H6MLFrh+vXrGonGrGS+RQfkA==}
     engines: {node: '>=16.9.0'}
 
   human-signals@8.0.1:
@@ -1416,10 +1419,10 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@hono/standard-validator@0.4.0(@standard-schema/spec@1.1.0)(hono@4.13.13)':
+  '@hono/standard-validator@0.4.0(@standard-schema/spec@1.1.0)(hono@4.13.19)':
     dependencies:
       '@standard-schema/spec': 1.1.0
-      hono: 4.13.13
+      hono: 4.13.19
 
   '@isaacs/ttlcache@2.1.5': {}
 
@@ -1563,8 +1566,8 @@ snapshots:
       execa: 9.6.1
       fastq: 1.20.3
       gray-matter: 4.0.3
-      hono: 4.13.13
-      hono-openapi: 1.3.5(hono@4.13.13)(zod@4.6.7)
+      hono: 4.13.19
+      hono-openapi: 1.3.5(hono@4.13.19)(zod@4.6.7)
       ignore: 7.0.12
       jpeg-js: 0.4.4
       json-schema: 0.4.0
@@ -1886,14 +1889,14 @@ snapshots:
       section-matter: 1.0.0
       strip-bom-string: 1.0.0
 
-  hono-openapi@1.3.5(hono@4.13.13)(zod@4.6.7):
+  hono-openapi@1.3.5(hono@4.13.19)(zod@4.6.7):
     dependencies:
-      '@hono/standard-validator': 0.4.0(@standard-schema/spec@1.1.0)(hono@4.13.13)
+      '@hono/standard-validator': 0.4.0(@standard-schema/spec@1.1.0)(hono@4.13.19)
       '@standard-community/standard-json': 0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(zod@4.6.7)
       '@standard-community/standard-openapi': 0.2.10(@standard-community/standard-json@0.3.6(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(zod@4.6.7))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@4.6.7)
       '@standard-schema/spec': 1.1.0
       '@types/json-schema': 7.0.15
-      hono: 4.13.13
+      hono: 4.13.19
       openapi-types: 12.1.3
     transitivePeerDependencies:
       - '@valibot/to-json-schema'
@@ -1906,7 +1909,7 @@ snapshots:
       - zod-openapi
       - zod-to-json-schema
 
-  hono@4.13.13: {}
+  hono@4.13.19: {}
 
   human-signals@8.0.1: {}
 
