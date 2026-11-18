@@ -11,6 +11,10 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="../../../spec/fixtures/raw.txt" Link="fixtures/raw.txt"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../../src/Gascoigne.Extensions.AI/Gascoigne.Extensions.AI.csproj" />
   </ItemGroup>
 </Project>
