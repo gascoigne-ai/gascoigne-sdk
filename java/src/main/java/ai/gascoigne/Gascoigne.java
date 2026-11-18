@@ -35,8 +35,6 @@ public final class Gascoigne {
     private static final String DEFAULT_ADDR = "127.0.0.1:7878";
     private static final String INSTALL_HINT =
             "mise use -g go:github.com/gascoigne-ai/gascoigne-cli/cmd/gascoigne";
-    private static final int BREAKER_FAILURES = 5;
-    private static final Duration BREAKER_PAUSE = Duration.ofSeconds(60);
     private static final ObjectMapper JSON = new ObjectMapper();
 
     /** Settings; the defaults work. */
@@ -123,10 +121,7 @@ public final class Gascoigne {
     private final HttpClient http =
             HttpClient.newBuilder().connectTimeout(Duration.ofMillis(500)).build();
     private final Object lock = new Object();
-    private Boolean available;
-    private int failures;
-    private long pausedUntilNanos;
-    private boolean warned;
+    private final Machine machine = new Machine();
     private Stats stats = new Stats(0, 0);
     private NativeEngine engine;
 
@@ -168,7 +163,9 @@ public final class Gascoigne {
             if (engine != null) {
                 engine.close();
                 engine = null;
-                available = false;
+                // A native runtime that never made a call is still at start.
+                machine.apply(Event.FIRST_NATIVE, System.nanoTime());
+                machine.apply(Event.CLOSE, System.nanoTime());
             }
         }
     }
@@ -185,15 +182,16 @@ public final class Gascoigne {
 
     private void warn(String message) {
         synchronized (lock) {
-            if (warned) {
+            if (!machine.firstWarning()) {
                 return;
             }
-            warned = true;
         }
         settings.warn.accept(message);
     }
 
-    private boolean healthy() {
+    private enum HealthAnswer { OK, MISMATCH, DOWN }
+
+    private HealthAnswer probeHealth() {
         try {
             HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl() + "/sdk/v1/health"))
                     .timeout(Duration.ofMillis(500))
@@ -201,19 +199,20 @@ public final class Gascoigne {
             HttpResponse<String> response =
                     http.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
-                return false;
+                return HealthAnswer.DOWN;
             }
             Health health = JSON.readValue(response.body(), Health.class);
             if (health.proto() != PROTO) {
                 warn("server speaks proto " + health.proto() + ", SDK " + PROTO
                         + "; running without optimization");
+                return HealthAnswer.MISMATCH;
             }
-            return health.proto() == PROTO;
+            return HealthAnswer.OK;
         } catch (IOException e) {
-            return false;
+            return HealthAnswer.DOWN;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return false;
+            return HealthAnswer.DOWN;
         }
     }
 
@@ -235,12 +234,13 @@ public final class Gascoigne {
         return Optional.empty();
     }
 
-    private boolean startServer() {
+    /** Starts the CLI server and polls its health; the event that ends the starting state. */
+    private Event startServer() {
         Optional<Path> cli = findCli();
         if (cli.isEmpty()) {
             warn("gascoigne-cli not found on PATH; running without optimization. Install: "
                     + INSTALL_HINT);
-            return false;
+            return Event.NO_CLI;
         }
         try {
             Process process = new ProcessBuilder(cli.get().toString(), "server", "start")
@@ -253,29 +253,47 @@ public final class Gascoigne {
         } catch (IOException e) {
             warn("could not start gascoigne server (" + e.getMessage()
                     + "); running without optimization");
-            return false;
+            return Event.START_FAILED;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return false;
+            return Event.START_FAILED;
         }
         return awaitHealthy();
     }
 
-    private boolean awaitHealthy() {
+    private Event awaitHealthy() {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
         while (System.nanoTime() < deadline) {
-            if (healthy()) {
-                return true;
+            HealthAnswer answer = probeHealth();
+            if (answer == HealthAnswer.OK) {
+                return Event.POLL_OK;
+            }
+            if (answer == HealthAnswer.MISMATCH) {
+                return Event.HEALTH_MISMATCH;
             }
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                return false;
+                return Event.POLL_TIMEOUT;
             }
         }
         warn("gascoigne server did not come up; running without optimization");
-        return false;
+        return Event.POLL_TIMEOUT;
+    }
+
+    /** The first probe, run once per runtime: leaves the machine in a settled state. */
+    private void probe() {
+        if (engine != null) {
+            machine.apply(Event.FIRST_NATIVE, System.nanoTime());
+            return;
+        }
+        machine.apply(Event.FIRST_PROXY, System.nanoTime());
+        switch (probeHealth()) {
+            case OK -> machine.apply(Event.HEALTH_OK, System.nanoTime());
+            case MISMATCH -> machine.apply(Event.HEALTH_MISMATCH, System.nanoTime());
+            case DOWN -> machine.apply(startServer(), System.nanoTime());
+        }
     }
 
     /** True when optimize calls will be tried. Probes once, then remembers. */
@@ -284,19 +302,16 @@ public final class Gascoigne {
             return false;
         }
         synchronized (lock) {
-            if (available == null) {
-                available = engine != null || healthy() || startServer();
+            if (machine.state() == State.START) {
+                probe();
             }
-            return available && System.nanoTime() >= pausedUntilNanos;
+            return machine.at(System.nanoTime()) == State.READY;
         }
     }
 
     private void recordFailure() {
         synchronized (lock) {
-            if (++failures >= BREAKER_FAILURES) {
-                failures = 0;
-                pausedUntilNanos = System.nanoTime() + BREAKER_PAUSE.toNanos();
-            }
+            machine.apply(Event.OPTIMIZE_FAILED, System.nanoTime());
         }
     }
 
@@ -336,7 +351,7 @@ public final class Gascoigne {
             return Result.unchanged(text);
         }
         synchronized (lock) {
-            failures = 0;
+            machine.apply(Event.OPTIMIZE_OK, System.nanoTime());
             Result r = result.get();
             long out = r.outTokens() > 0 ? r.outTokens() : r.rawTokens();
             stats = new Stats(stats.rawTokens() + r.rawTokens(), stats.outTokens() + out);
