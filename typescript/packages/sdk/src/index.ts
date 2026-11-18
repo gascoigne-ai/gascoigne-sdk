@@ -123,97 +123,102 @@ export interface RunsQuery {
 
 type Wire = Record<string, unknown>;
 
-function obj(v: unknown, what = "body"): Wire {
-  if (typeof v !== "object" || v === null || Array.isArray(v))
+function obj(value: unknown, what = "body"): Wire {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
     throw new Error(`${what} is not an object`);
-  return v as Wire;
+  return value as Wire;
 }
 
-function str(d: Wire, key: string, required = false): string {
-  const v = d[key];
-  if (v === undefined && !required) return "";
-  if (typeof v !== "string") throw new Error(`${key} is not a string`);
-  return v;
+function str(record: Wire, key: string, required = false): string {
+  const value = record[key];
+  if (value === undefined && !required) return "";
+  if (typeof value !== "string") throw new Error(`${key} is not a string`);
+  return value;
 }
 
-function int(d: Wire, key: string, required = false): number {
-  const v = d[key];
-  if (v === undefined && !required) return 0;
-  if (typeof v !== "number" || !Number.isInteger(v)) throw new Error(`${key} is not an integer`);
-  return v;
+function int(record: Wire, key: string, required = false): number {
+  const value = record[key];
+  if (value === undefined && !required) return 0;
+  if (typeof value !== "number" || !Number.isInteger(value))
+    throw new Error(`${key} is not an integer`);
+  return value;
 }
 
 /** A missing or null list is empty. */
-function strs(d: Wire, key: string): string[] {
-  const v = d[key];
-  if (v === undefined || v === null) return [];
-  if (!Array.isArray(v) || !v.every((x) => typeof x === "string")) {
+function strs(record: Wire, key: string): string[] {
+  const value = record[key];
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
     throw new Error(`${key} is not a list of strings`);
   }
-  return [...v];
+  return [...value];
 }
 
-function many<T>(v: unknown, decode: (d: Wire) => T): T[] {
-  if (!Array.isArray(v)) throw new Error("body is not a list");
-  return v.map((d) => decode(obj(d, "item")));
+function many<T>(body: unknown, decode: (item: Wire) => T): T[] {
+  if (!Array.isArray(body)) throw new Error("body is not a list");
+  return body.map((item) => decode(obj(item, "item")));
 }
 
 /** Decode `GET /sdk/v1/health`; throws when the body is not one. */
-export function decodeHealth(v: unknown): Health {
-  const d = obj(v);
-  if (typeof d.proxy !== "boolean") throw new Error("proxy is not a boolean");
-  return { version: str(d, "version", true), proto: int(d, "proto", true), proxy: d.proxy };
-}
-
-/** Decode a `POST /sdk/v1/optimize` answer; throws when the body is not one. */
-export function decodeResult(v: unknown): Result {
-  const d = obj(v);
+export function decodeHealth(body: unknown): Health {
+  const record = obj(body);
+  if (typeof record.proxy !== "boolean") throw new Error("proxy is not a boolean");
   return {
-    text: str(d, "text", true),
-    rawId: str(d, "raw_id"),
-    rawTokens: int(d, "raw_tokens", true),
-    outTokens: int(d, "out_tokens", true),
-    skipped: str(d, "skipped"),
+    version: str(record, "version", true),
+    proto: int(record, "proto", true),
+    proxy: record.proxy,
   };
 }
 
-const toTotal = (d: Wire): Total => ({
-  group: str(d, "group", true),
-  runs: int(d, "runs", true),
-  optimized: int(d, "optimized", true),
-  failed: int(d, "failed", true),
-  rawTokens: int(d, "raw_tokens", true),
-  outTokens: int(d, "out_tokens", true),
-  saved: int(d, "saved", true),
-  first: str(d, "first"),
-  last: str(d, "last"),
+/** Decode a `POST /sdk/v1/optimize` answer; throws when the body is not one. */
+export function decodeResult(body: unknown): Result {
+  const record = obj(body);
+  return {
+    text: str(record, "text", true),
+    rawId: str(record, "raw_id"),
+    rawTokens: int(record, "raw_tokens", true),
+    outTokens: int(record, "out_tokens", true),
+    skipped: str(record, "skipped"),
+  };
+}
+
+const toTotal = (record: Wire): Total => ({
+  group: str(record, "group", true),
+  runs: int(record, "runs", true),
+  optimized: int(record, "optimized", true),
+  failed: int(record, "failed", true),
+  rawTokens: int(record, "raw_tokens", true),
+  outTokens: int(record, "out_tokens", true),
+  saved: int(record, "saved", true),
+  first: str(record, "first"),
+  last: str(record, "last"),
 });
 
-const toRun = (d: Wire): Run => {
-  const route = str(d, "route");
+const toRun = (record: Wire): Run => {
+  const route = str(record, "route");
   return {
-    id: int(d, "id", true),
-    time: str(d, "time", true),
-    session: str(d, "session"),
-    agent: str(d, "agent"),
-    model: str(d, "model"),
-    command: str(d, "command"),
+    id: int(record, "id", true),
+    time: str(record, "time", true),
+    session: str(record, "session"),
+    agent: str(record, "agent"),
+    model: str(record, "model"),
+    command: str(record, "command"),
     ...(route ? { route } : {}),
-    optimizers: strs(d, "optimizers"),
-    rawTokens: int(d, "raw_tokens", true),
-    outTokens: int(d, "out_tokens", true),
-    durationNs: int(d, "duration_ns", true),
-    rawId: str(d, "raw_id"),
-    outcome: str(d, "outcome", true),
-    reason: str(d, "reason"),
+    optimizers: strs(record, "optimizers"),
+    rawTokens: int(record, "raw_tokens", true),
+    outTokens: int(record, "out_tokens", true),
+    durationNs: int(record, "duration_ns", true),
+    rawId: str(record, "raw_id"),
+    outcome: str(record, "outcome", true),
+    reason: str(record, "reason"),
   };
 };
 
 /** Decode the body of `GET /sdk/v1/stats`. */
-export const decodeTotals = (v: unknown): Total[] => many(v, toTotal);
+export const decodeTotals = (body: unknown): Total[] => many(body, toTotal);
 
 /** Decode the body of `GET /sdk/v1/recent`, order kept. */
-export const decodeRuns = (v: unknown): Run[] => many(v, toRun);
+export const decodeRuns = (body: unknown): Run[] => many(body, toRun);
 
 /** The query fields that are set, in the wire's names, as strings. */
 function query(fields: Record<string, string | number | Date | undefined>): Record<string, string> {
@@ -258,7 +263,7 @@ function findOnPath(name: string): string | undefined {
   return undefined;
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class Runtime {
   private state: "unknown" | "ready" | "bypass" = "unknown";
@@ -298,7 +303,7 @@ export class Runtime {
   private warn(msg: string): void {
     if (this.warned) return;
     this.warned = true;
-    (this.opts.warn ?? ((m) => console.warn(`[gascoigne] ${m}`)))(msg);
+    (this.opts.warn ?? ((message) => console.warn(`[gascoigne] ${message}`)))(msg);
   }
 
   private async healthy(): Promise<boolean> {
@@ -333,9 +338,9 @@ export class Runtime {
           p.kill();
           resolve();
         }, 10_000);
-        p.on("error", (e) => {
+        p.on("error", (error) => {
           clearTimeout(t);
-          reject(e);
+          reject(error);
         });
         p.on("exit", () => {
           clearTimeout(t);
@@ -455,43 +460,43 @@ export class Runtime {
    * The recorded runs summed per group. Reads never throw and never trip the optimize breaker:
    * on any failure (bypass, server down, a bad query) the answer is an empty list.
    */
-  async totals(q: TotalsQuery = {}): Promise<Total[]> {
+  async totals(filter: TotalsQuery = {}): Promise<Total[]> {
     const params = query({
-      by: q.by,
-      session: q.session,
-      agent: q.agent,
-      model: q.model,
-      since: q.since,
+      by: filter.by,
+      session: filter.session,
+      agent: filter.agent,
+      model: filter.model,
+      since: filter.since,
     });
-    const body = await this.read("/sdk/v1/stats", params, (p) =>
-      this.native?.stats(JSON.stringify(p)),
+    const body = await this.read("/sdk/v1/stats", params, (payload) =>
+      this.native?.stats(JSON.stringify(payload)),
     );
     return this.decoded(body, decodeTotals);
   }
 
   /** The recorded runs, newest first; empty on any failure. */
-  async runs(q: RunsQuery = {}): Promise<Run[]> {
+  async runs(filter: RunsQuery = {}): Promise<Run[]> {
     const params = query({
-      session: q.session,
-      agent: q.agent,
-      model: q.model,
-      since: q.since,
-      before: q.before,
-      limit: q.limit,
+      session: filter.session,
+      agent: filter.agent,
+      model: filter.model,
+      since: filter.since,
+      before: filter.before,
+      limit: filter.limit,
     });
-    const native = (p: Record<string, string>) =>
+    const native = (payload: Record<string, string>) =>
       this.native?.recent(
         JSON.stringify({
-          ...p,
-          ...(p.before ? { before: Number(p.before) } : {}),
-          ...(p.limit ? { limit: Number(p.limit) } : {}),
+          ...payload,
+          ...(payload.before ? { before: Number(payload.before) } : {}),
+          ...(payload.limit ? { limit: Number(payload.limit) } : {}),
         }),
       );
     return this.decoded(await this.read("/sdk/v1/recent", params, native), decodeRuns);
   }
 
   /** Decode a ledger body; empty when there is none or it is malformed. */
-  private decoded<T>(body: unknown, decode: (v: unknown) => T[]): T[] {
+  private decoded<T>(body: unknown, decode: (body: unknown) => T[]): T[] {
     if (body === undefined) return [];
     try {
       return decode(body);
@@ -553,10 +558,12 @@ export function init(opts: Options = {}): Runtime {
 
 export const runtime = (): Runtime => current;
 export const optimize = (text: string, attrs?: Attrs) => current.optimize(text, attrs);
-export const wrapTool = <A extends unknown[], R>(fn: (...a: A) => R | Promise<R>, name?: string) =>
-  current.wrapTool(fn, name);
+export const wrapTool = <A extends unknown[], R>(
+  fn: (...args: A) => R | Promise<R>,
+  name?: string,
+) => current.wrapTool(fn, name);
 export const raw = (id: string) => current.raw(id);
 export const proxyBaseUrl = (api?: "openai" | "anthropic" | "gemini") => current.proxyBaseUrl(api);
 export const stats = () => current.stats();
-export const totals = (q?: TotalsQuery) => current.totals(q);
-export const runs = (q?: RunsQuery) => current.runs(q);
+export const totals = (filter?: TotalsQuery) => current.totals(filter);
+export const runs = (filter?: RunsQuery) => current.runs(filter);

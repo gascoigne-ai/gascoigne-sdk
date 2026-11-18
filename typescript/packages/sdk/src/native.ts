@@ -75,7 +75,7 @@ function bundledLibrary(): string | undefined {
   }
   const dir = join(root, "lib", platformKey());
   if (!existsSync(dir)) return undefined;
-  const entry = readdirSync(dir).find((f) => f.endsWith(".gz"));
+  const entry = readdirSync(dir).find((file) => file.endsWith(".gz"));
   return entry ? join(dir, entry) : undefined;
 }
 
@@ -86,7 +86,7 @@ function bundledLibrary(): string | undefined {
  */
 export function unpack(bundled: string): string {
   const data = gunzipSync(readFileSync(bundled));
-  const sha = (b: Buffer) => createHash("sha256").update(b).digest("hex").slice(0, 16);
+  const sha = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex").slice(0, 16);
   const digest = sha(data);
   const folder = join(process.env.GASCOIGNE_LIB_DIR || tmpdir(), `gascoigne-native-${digest}`);
   const target = join(folder, bundled.replace(/^.*[\\/]/, "").replace(/\.gz$/, ""));
@@ -139,7 +139,9 @@ export function findLibrary(): { path?: string; looked: string[] } {
   }
   for (const dir of systemDirs()) {
     looked.push(dir);
-    const found = LIBRARY_NAMES.map((n) => join(dir, n)).find((p) => existsSync(p));
+    const found = LIBRARY_NAMES.map((name) => join(dir, name)).find((candidate) =>
+      existsSync(candidate),
+    );
     if (found) return { path: found, looked };
   }
   if (process.env.GASCOIGNE_UNPACK !== "off") {
@@ -150,15 +152,15 @@ export function findLibrary(): { path?: string; looked: string[] } {
   return { looked };
 }
 
-function wire(s: Settings): Wire {
+function wire(settings: Settings): Wire {
   return {
-    config: s.config,
-    set: s.set,
-    only: s.only,
-    disable: s.disable,
-    ignore_user_file: s.ignoreUserFile,
-    timeout_ms: s.timeoutMs,
-    ledger: s.ledger,
+    config: settings.config,
+    set: settings.set,
+    only: settings.only,
+    disable: settings.disable,
+    ignore_user_file: settings.ignoreUserFile,
+    timeout_ms: settings.timeoutMs,
+    ledger: settings.ledger,
   };
 }
 
@@ -222,8 +224,8 @@ export class Native {
   private call(fn: "optimize" | "raw" | "stats" | "recent", arg: string): Promise<string> {
     const err = [null];
     return new Promise((resolve, reject) => {
-      this.fns[fn].async(this.handle, arg, err, (e: Error | null, out: unknown) => {
-        if (e) return reject(new NativeError(e.message));
+      this.fns[fn].async(this.handle, arg, err, (error: Error | null, out: unknown) => {
+        if (error) return reject(new NativeError(error.message));
         if (!out) return reject(new NativeError(this.take(err[0]) || `${fn} failed`));
         resolve(this.take(out));
       });

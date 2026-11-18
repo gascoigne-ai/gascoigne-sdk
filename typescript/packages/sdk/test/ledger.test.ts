@@ -56,7 +56,7 @@ async function serve(status = 200) {
     return res.end("{}");
   });
   const s = srv;
-  await new Promise<void>((r) => s.listen(0, "127.0.0.1", r));
+  await new Promise<void>((resolve) => s.listen(0, "127.0.0.1", resolve));
   process.env.GASCOIGNE_SERVER_ADDR = `127.0.0.1:${(s.address() as AddressInfo).port}`;
 }
 
@@ -65,7 +65,7 @@ beforeEach(() => {
   for (const k of ["GASCOIGNE_SDK", "GASCOIGNE_SERVER", "GASCOIGNE_BIN"]) delete process.env[k];
 });
 afterEach(async () => {
-  await new Promise((r) => (srv ? srv.close(r) : r(null)));
+  await new Promise((resolve) => (srv ? srv.close(resolve) : resolve(null)));
   srv = undefined;
 });
 
@@ -133,7 +133,7 @@ describe("embedded memory ledger", () => {
     const raw = "INFO request served path=/api/items status=200 ms=12\n".repeat(400);
     await rt.optimizeResult(raw, { tool: "bash", cmd: "tail app.log" });
     const totals = await rt.totals({ by: "agent" });
-    expect(totals.map((t) => [t.group, t.runs])).toEqual([["sdk", 1]]);
+    expect(totals.map((total) => [total.group, total.runs])).toEqual([["sdk", 1]]);
     expect(totals[0]?.saved).toBeGreaterThan(0);
     const runs = await rt.runs({ session: "s1" });
     expect(runs).toHaveLength(1);

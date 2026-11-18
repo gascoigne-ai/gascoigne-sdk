@@ -37,7 +37,7 @@ process.env.GASCOIGNE_CONFIG ??= resolve(import.meta.dirname, "..", "gascoigne.y
 process.env.GASCOIGNE_SERVER_ADDR ??= "127.0.0.1:7879";
 
 export function searchLogs(): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
+  const pad = (value: number) => String(value).padStart(2, "0");
   // Request ids differ per call, as in real logs; the proxy caches identical results.
   const firstId = Math.floor(Math.random() * 900_000);
   const lines = Array.from({ length: 400 }, (_, i) => {
@@ -54,7 +54,7 @@ export function searchLogs(): string {
 }
 
 const WIDTH = 72;
-const count = (n: number) => n.toLocaleString();
+const count = (value: number) => value.toLocaleString();
 const seen: { before: string; result: Result }[] = [];
 
 /** The first lines of a text, each cut to the display width. */
@@ -108,7 +108,9 @@ async function proxyEvents(after = 0): Promise<ProxyEvent[]> {
   try {
     const url = `http://${process.env.GASCOIGNE_SERVER_ADDR}/api/events?after=${after}&limit=200`;
     const events = (await (await fetch(url)).json()) as ProxyEvent[];
-    return events.filter((e) => e.pipeline === "proxy").sort((a, b) => a.id - b.id);
+    return events
+      .filter((event) => event.pipeline === "proxy")
+      .sort((left, right) => left.id - right.id);
   } catch {
     return [];
   }
@@ -117,7 +119,9 @@ async function proxyEvents(after = 0): Promise<ProxyEvent[]> {
 /** Tool-result events after id `after`; the server records them just after answering. */
 async function awaitResults(after: number): Promise<ProxyEvent[]> {
   for (let attempt = 0; attempt < 10; attempt++) {
-    const results = (await proxyEvents(after)).filter((e) => e.raw_tokens && e.route === "default");
+    const results = (await proxyEvents(after)).filter(
+      (event) => event.raw_tokens && event.route === "default",
+    );
     if (results.length) return results;
     await new Promise((resolve) => setTimeout(resolve, 200));
   }

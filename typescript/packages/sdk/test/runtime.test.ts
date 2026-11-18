@@ -13,7 +13,7 @@ async function serve(opts: { proto?: number; optimizeStatus?: number } = {}) {
       return res.end(JSON.stringify({ version: "t", proto: opts.proto ?? 1, proxy: true }));
     }
     let body = "";
-    req.on("data", (c) => (body += c));
+    req.on("data", (chunk) => (body += chunk));
     req.on("end", () => {
       if (req.url === "/sdk/v1/optimize") {
         posts.push(body);
@@ -26,7 +26,7 @@ async function serve(opts: { proto?: number; optimizeStatus?: number } = {}) {
     });
   });
   const s = srv;
-  await new Promise<void>((r) => s.listen(0, "127.0.0.1", r));
+  await new Promise<void>((resolve) => s.listen(0, "127.0.0.1", resolve));
   process.env.GASCOIGNE_SERVER_ADDR = `127.0.0.1:${(s.address() as AddressInfo).port}`;
 }
 
@@ -35,7 +35,7 @@ beforeEach(() => {
   for (const k of ["GASCOIGNE_SDK", "GASCOIGNE_SERVER", "GASCOIGNE_BIN"]) delete process.env[k];
 });
 afterEach(async () => {
-  await new Promise((r) => (srv ? srv.close(r) : r(null)));
+  await new Promise((resolve) => (srv ? srv.close(resolve) : resolve(null)));
   srv = undefined;
 });
 
@@ -46,7 +46,7 @@ describe("Runtime", () => {
     process.env.PATH = "";
     const warnings: string[] = [];
     try {
-      const rt = new Runtime({ warn: (m) => warnings.push(m) });
+      const rt = new Runtime({ warn: (message) => warnings.push(message) });
       expect(await rt.optimize("hello ".repeat(50))).toBe("hello ".repeat(50));
       expect(await rt.optimize("again")).toBe("again");
       expect(await rt.proxyBaseUrl()).toBeUndefined();
@@ -61,14 +61,16 @@ describe("Runtime", () => {
   it("kill switch bypasses silently", async () => {
     process.env.GASCOIGNE_SDK = "off";
     const warnings: string[] = [];
-    expect(await new Runtime({ warn: (m) => warnings.push(m) }).optimize("x")).toBe("x");
+    expect(await new Runtime({ warn: (message) => warnings.push(message) }).optimize("x")).toBe(
+      "x",
+    );
     expect(warnings).toHaveLength(0);
   });
 
   it("optimizes through the server and reports", async () => {
     await serve();
     const seen: string[] = [];
-    const rt = new Runtime({ agent: "demo", onResult: (_o, r) => seen.push(r.rawId) });
+    const rt = new Runtime({ agent: "demo", onResult: (_o, result) => seen.push(result.rawId) });
     const res = await rt.optimizeResult("long ".repeat(100), { tool: "grep" });
     expect(res).toMatchObject({ text: "short", rawId: "abc", outTokens: 5 });
     expect(JSON.parse(posts[0])).toMatchObject({ agent: "demo", tool: "grep" });

@@ -10,7 +10,7 @@ describe("spec fixtures decode into the typed wire models", () => {
   it("covers every json fixture", () => {
     expect(
       readdirSync(FIXTURES)
-        .filter((f) => f.endsWith(".json"))
+        .filter((file) => file.endsWith(".json"))
         .sort(),
     ).toEqual([
       "health.json",
@@ -41,14 +41,14 @@ describe("spec fixtures decode into the typed wire models", () => {
 
   it("stats", () => {
     const totals = decodeTotals(load("stats.json"));
-    expect(totals.map((t) => t.group)).toEqual(["default", "-"]);
+    expect(totals.map((total) => total.group)).toEqual(["default", "-"]);
     expect(totals[0]?.saved).toBe(9166);
     expect(totals[0]?.first.startsWith("2026-")).toBe(true);
   });
 
   it("recent keeps order and optional fields", () => {
     const runs = decodeRuns(load("recent.json"));
-    expect(runs.map((r) => r.id)).toEqual([2, 1]);
+    expect(runs.map((run) => run.id)).toEqual([2, 1]);
     const [bypassed, optimized] = runs;
     expect(bypassed?.outcome).toBe("bypassed");
     expect(bypassed?.route).toBeUndefined();
