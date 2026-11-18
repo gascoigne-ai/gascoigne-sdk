@@ -30,8 +30,8 @@ pub struct Settings {
 
 // serde passes a reference.
 #[allow(clippy::trivially_copy_pass_by_ref)]
-fn is_zero(n: &u32) -> bool {
-    *n == 0
+fn is_zero(value: &u32) -> bool {
+    *value == 0
 }
 
 #[cfg(feature = "native")]
@@ -50,7 +50,7 @@ fn library_name() -> &'static str {
 fn system_dirs() -> Vec<std::path::PathBuf> {
     use std::path::PathBuf;
     let mut dirs: Vec<PathBuf> = std::env::var_os("GASCOIGNE_LIB_PATH")
-        .map(|p| std::env::split_paths(&p).collect())
+        .map(|paths| std::env::split_paths(&paths).collect())
         .unwrap_or_default();
     if let Some(bin) = std::env::var_os("GASCOIGNE_BIN") {
         dirs.extend(PathBuf::from(bin).parent().map(PathBuf::from));
@@ -60,7 +60,7 @@ fn system_dirs() -> Vec<std::path::PathBuf> {
         .unwrap_or_default();
     if cfg!(windows) {
         for var in ["LOCALAPPDATA", "ProgramFiles"] {
-            dirs.extend(std::env::var_os(var).map(|d| PathBuf::from(d).join("gascoigne")));
+            dirs.extend(std::env::var_os(var).map(|base| PathBuf::from(base).join("gascoigne")));
         }
     } else if cfg!(target_os = "macos") {
         dirs.extend([
@@ -95,8 +95,8 @@ fn find_library(looked: &mut Vec<String>) -> Option<std::path::PathBuf> {
         looked.push(dir.display().to_string());
         let found = [library_name()]
             .iter()
-            .map(|n| dir.join(n))
-            .find(|p| p.is_file());
+            .map(|name| dir.join(name))
+            .find(|candidate| candidate.is_file());
         if found.is_some() {
             return found;
         }
@@ -140,24 +140,27 @@ mod enabled {
                     )
                 })?;
             // SAFETY: loading a library runs its initializers; this one is the gascoigne build.
-            let lib =
-                unsafe { Library::new(&path) }.map_err(|e| format!("{}: {e}", path.display()))?;
+            let lib = unsafe { Library::new(&path) }
+                .map_err(|error| format!("{}: {error}", path.display()))?;
             // SAFETY: the symbol has this signature in spec/native.md.
             let version: c_int = unsafe {
                 let f: Symbol<unsafe extern "C" fn() -> c_int> = lib
                     .get(b"gascoigne_abi_version")
-                    .map_err(|e| e.to_string())?;
+                    .map_err(|error| error.to_string())?;
                 f()
             };
             if version != ABI {
                 return Err(format!("{} speaks another ABI than {ABI}", path.display()));
             }
-            let options = CString::new(serde_json::to_string(settings).map_err(|e| e.to_string())?)
-                .map_err(|e| e.to_string())?;
+            let options =
+                CString::new(serde_json::to_string(settings).map_err(|error| error.to_string())?)
+                    .map_err(|error| error.to_string())?;
             let mut err: *mut c_char = std::ptr::null_mut();
             // SAFETY: options is a valid C string and err a valid out pointer.
             let handle = unsafe {
-                let f: Symbol<Open> = lib.get(b"gascoigne_open").map_err(|e| e.to_string())?;
+                let f: Symbol<Open> = lib
+                    .get(b"gascoigne_open")
+                    .map_err(|error| error.to_string())?;
                 f(options.as_ptr(), &mut err)
             };
             let native = Native { lib, handle };
@@ -186,11 +189,11 @@ mod enabled {
         }
 
         fn call(&self, name: &[u8], arg: &str) -> Result<String, String> {
-            let arg = CString::new(arg).map_err(|e| e.to_string())?;
+            let arg = CString::new(arg).map_err(|error| error.to_string())?;
             let mut err: *mut c_char = std::ptr::null_mut();
             // SAFETY: handle is open, arg is a valid C string, err a valid out pointer.
             let out = unsafe {
-                let f: Symbol<Call> = self.lib.get(name).map_err(|e| e.to_string())?;
+                let f: Symbol<Call> = self.lib.get(name).map_err(|error| error.to_string())?;
                 f(self.handle, arg.as_ptr(), &mut err)
             };
             match self.take(out) {

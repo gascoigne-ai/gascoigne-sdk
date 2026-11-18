@@ -23,8 +23,8 @@ fn noisy_log() -> String {
 
 fn main() {
     // 1. Start gascoigne in native mode. It fails if libgascoigne cannot be found.
-    let rt = Runtime::native("rust-demo", Settings::default()).unwrap_or_else(|e| {
-        eprintln!("{e}");
+    let rt = Runtime::native("rust-demo", Settings::default()).unwrap_or_else(|error| {
+        eprintln!("{error}");
         std::process::exit(1);
     });
 

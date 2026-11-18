@@ -51,8 +51,8 @@ fn serve(status: u16) -> (String, Arc<Mutex<Vec<String>>>) {
 }
 
 fn same_query(expected: &str, actual: &str) {
-    let split = |t: &str| {
-        let (path, query) = t.split_once('?').unwrap_or((t, ""));
+    let split = |text: &str| {
+        let (path, query) = text.split_once('?').unwrap_or((text, ""));
         let mut pairs: Vec<String> = query.split('&').map(str::to_string).collect();
         pairs.sort();
         (path.to_string(), pairs)

@@ -42,11 +42,11 @@ fn serve(proto: i64, optimize_status: u16) -> (String, Arc<AtomicUsize>, Arc<Mut
 }
 
 /// Reads headers plus `Content-Length` bytes of body.
-fn read_request(s: &mut std::net::TcpStream) -> String {
+fn read_request(stream: &mut std::net::TcpStream) -> String {
     let mut data = Vec::new();
     let mut buf = [0u8; 4096];
     loop {
-        let n = s.read(&mut buf).unwrap_or(0);
+        let n = stream.read(&mut buf).unwrap_or(0);
         data.extend_from_slice(&buf[..n]);
         let text = String::from_utf8_lossy(&data).to_string();
         let Some(i) = text.find("\r\n\r\n") else {
@@ -59,7 +59,7 @@ fn read_request(s: &mut std::net::TcpStream) -> String {
             .to_lowercase()
             .split("content-length: ")
             .nth(1)
-            .and_then(|r| r.split("\r\n").next()?.trim().parse::<usize>().ok())
+            .and_then(|rest| rest.split("\r\n").next()?.trim().parse::<usize>().ok())
             .unwrap_or(0);
         if data.len() >= i + 4 + want || n == 0 {
             return text;

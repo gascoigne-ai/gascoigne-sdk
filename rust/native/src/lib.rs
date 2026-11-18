@@ -28,7 +28,7 @@ fn digest(data: &[u8]) -> String {
     Sha256::digest(data)
         .iter()
         .take(8)
-        .fold(String::new(), |acc, b| acc + &format!("{b:02x}"))
+        .fold(String::new(), |acc, byte| acc + &format!("{byte:02x}"))
 }
 
 /// Unpacks a gzip-compressed library into the temp directory and returns the file to load.
@@ -86,7 +86,7 @@ pub fn runtime(agent: &str, settings: Settings) -> Result<Runtime, String> {
     let found = Runtime::native(agent, settings.clone());
     if found.is_ok()
         || std::env::var_os("GASCOIGNE_LIB").is_some()
-        || std::env::var("GASCOIGNE_UNPACK").is_ok_and(|v| v == "off")
+        || std::env::var("GASCOIGNE_UNPACK").is_ok_and(|value| value == "off")
     {
         return found;
     }

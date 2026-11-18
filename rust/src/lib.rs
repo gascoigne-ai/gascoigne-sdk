@@ -129,15 +129,19 @@ impl From<String> for Route {
 }
 
 /// A missing, null or empty route is `None`.
-fn route<'de, D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Option<Route>, D::Error> {
-    Ok(Option::<String>::deserialize(d)?
+fn route<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<Option<Route>, D::Error> {
+    Ok(Option::<String>::deserialize(deserializer)?
         .filter(|name| !name.is_empty())
         .map(Route::from))
 }
 
 /// A missing or null list is empty.
-fn list<'de, D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Vec<String>, D::Error> {
-    Ok(Option::<Vec<String>>::deserialize(d)?.unwrap_or_default())
+fn list<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<Vec<String>, D::Error> {
+    Ok(Option::<Vec<String>>::deserialize(deserializer)?.unwrap_or_default())
 }
 
 /// One recorded optimization (`GET /sdk/v1/recent`).
@@ -426,7 +430,7 @@ impl Runtime {
         response
             .into_json::<Result>()
             .ok()
-            .filter(|r| !r.text.is_empty())
+            .filter(|response| !response.text.is_empty())
     }
 
     /// Runs the request in the embedded engine when there is one, else through the server.
@@ -440,7 +444,7 @@ impl Runtime {
         let out = native.optimize(&body).ok()?;
         serde_json::from_str::<Result>(&out)
             .ok()
-            .filter(|r| !r.text.is_empty())
+            .filter(|response| !response.text.is_empty())
     }
 
     /// Optimize `text`; on any problem the result carries the input unchanged.
@@ -514,7 +518,13 @@ impl Runtime {
 
     /// The recorded runs, newest first; empty on any failure.
     pub fn runs(&self, query: &RunsQuery) -> Vec<Run> {
-        let number = |n: u64| if n > 0 { n.to_string() } else { String::new() };
+        let number = |count: u64| {
+            if count > 0 {
+                count.to_string()
+            } else {
+                String::new()
+            }
+        };
         let fields = [
             ("session", query.session.clone()),
             ("agent", query.agent.clone()),

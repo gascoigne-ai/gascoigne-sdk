@@ -3,7 +3,7 @@ use gascoigne::{Health, Outcome, Result as Answer, Route, Run, Total};
 
 fn fixture(name: &str) -> String {
     let path = format!("{}/../spec/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
-    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"))
+    std::fs::read_to_string(&path).unwrap_or_else(|error| panic!("{path}: {error}"))
 }
 
 #[test]
@@ -50,7 +50,7 @@ fn stats() {
 #[test]
 fn recent_keeps_order_and_optionals() {
     let runs: Vec<Run> = serde_json::from_str(&fixture("recent.json")).unwrap();
-    assert_eq!(runs.iter().map(|r| r.id).collect::<Vec<_>>(), [2, 1]);
+    assert_eq!(runs.iter().map(|run| run.id).collect::<Vec<_>>(), [2, 1]);
     assert_eq!(runs[0].outcome, Outcome::Bypassed);
     assert_eq!(runs[0].route, None);
     assert!(runs[0].optimizers.is_empty());

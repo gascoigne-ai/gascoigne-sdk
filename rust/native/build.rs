@@ -12,7 +12,7 @@ fn main() {
         .into_iter()
         .flatten()
         .flatten()
-        .filter(|e| e.path().is_dir())
+        .filter(|entry| entry.path().is_dir())
         .collect();
     dirs.sort_by_key(std::fs::DirEntry::file_name);
     for dir in dirs {
