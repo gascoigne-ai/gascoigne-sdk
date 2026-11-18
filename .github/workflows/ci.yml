@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
         with: { submodules: true }
       # The native library is built from the CLI's engine facade (package inproc).
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
       - run: mise run ${{ matrix.task }}
   e2e:
     runs-on: ubuntu-latest
@@ -35,7 +35,7 @@ jobs:
           if [ -f cli/cmd/gascoigne/sdk.go ]; then echo "ready=true" >> "$GITHUB_OUTPUT";
           else echo "::warning::gascoigne-cli has no /sdk/v1 API yet; skipping e2e"; fi
       - if: steps.cli.outputs.ready == 'true'
-        uses: jdx/mise-action@v2
+        uses: jdx/mise-action@v5
       - if: steps.cli.outputs.ready == 'true'
         run: cd cli && go build -o ../gascoigne ./cmd/gascoigne
       - if: steps.cli.outputs.ready == 'true'

@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
       - uses: actions/download-artifact@v8
         with: { path: parts }
       # One archive per platform, named for the platform, each with the library and the header.
@@ -78,7 +78,7 @@ jobs:
       - uses: actions/checkout@v4
         with: { submodules: true }
       # mise run builds libgascoigne from the CLI engine facade, as in ci.yml.
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
       - run: python3 scripts/check_version.py py "${TAG#py-v}"
       - run: mise run py:check
       - run: cd python/gascoigne && uv build --out-dir ../../dist
@@ -92,7 +92,7 @@ jobs:
     permissions: { contents: read, id-token: write }
     steps:
       - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
       - run: gh release download "$TAG" --dir dist --pattern '*.whl' --pattern '*.tar.gz'
       - run: uv publish --trusted-publishing always dist/*
 
@@ -103,7 +103,7 @@ jobs:
       - uses: actions/checkout@v4
         with: { submodules: true }
       # mise run builds libgascoigne from the CLI engine facade, as in ci.yml.
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
       - run: python3 scripts/check_version.py ts "${TAG#ts-v}"
       - run: mise run ts:check
       - run: cd typescript && pnpm -r --filter "./packages/*" exec pnpm pack --pack-destination "$GITHUB_WORKSPACE/dist"
@@ -116,7 +116,7 @@ jobs:
     environment: npm
     steps:
       - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
       - run: gh release download "$TAG" --dir dist --pattern '*.tgz'
       - run: for f in dist/*.tgz; do npm publish "./$f" --access public --provenance; done
         env: { NODE_AUTH_TOKEN: "${{ secrets.NPM_TOKEN }}" }
@@ -140,7 +140,7 @@ jobs:
       - uses: actions/checkout@v4
         with: { submodules: true }
       # mise run builds libgascoigne from the CLI engine facade, as in ci.yml.
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
       - run: python3 scripts/check_version.py go "${TAG#go/v}"
       - run: mise run go:check
       # The Go module proxy serves the tag itself; the release adds a signed source archive.
@@ -158,7 +158,7 @@ jobs:
       - uses: actions/checkout@v4
         with: { submodules: true }
       # mise run builds libgascoigne from the CLI engine facade, as in ci.yml.
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
       - run: python3 scripts/check_version.py java "${TAG#java-v}"
       - run: mise run java:check
       - run: mkdir dist && cp java/target/gascoigne-*.jar java/spring-ai/target/gascoigne-spring-ai-*.jar dist/
@@ -187,7 +187,7 @@ jobs:
     environment: maven-central
     steps:
       - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
       - run: cd java && mvn -B deploy -DskipTests
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
@@ -199,7 +199,7 @@ jobs:
       - uses: actions/checkout@v4
         with: { submodules: true }
       # mise run builds libgascoigne from the CLI engine facade, as in ci.yml.
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
       - run: python3 scripts/check_version.py dotnet "${TAG#dotnet-v}"
       - run: mise run dotnet:check
       - run: cd dotnet && dotnet pack src/Gascoigne -c Release -o ../dist && dotnet pack src/Gascoigne.Extensions.AI -c Release -o ../dist
@@ -211,7 +211,7 @@ jobs:
     permissions: { contents: read, packages: write }
     steps:
       - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
       - run: gh release download "$TAG" --dir dist --pattern '*.nupkg'
       - run: dotnet nuget push "dist/*.nupkg" --api-key "${{ github.token }}" --source https://nuget.pkg.github.com/gascoigne-ai/index.json
   publish-nuget:
@@ -221,7 +221,7 @@ jobs:
     environment: nuget
     steps:
       - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
       - run: gh release download "$TAG" --dir dist --pattern '*.nupkg'
       - run: dotnet nuget push "dist/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json
 
@@ -232,7 +232,7 @@ jobs:
       - uses: actions/checkout@v4
         with: { submodules: true }
       # mise run builds libgascoigne from the CLI engine facade, as in ci.yml.
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
       - run: python3 scripts/check_version.py rust "${TAG#rust-v}"
       - run: mise run rust:check
       - run: cd rust && cargo package && mkdir -p ../dist && cp target/package/*.crate ../dist/
@@ -245,6 +245,6 @@ jobs:
     environment: crates-io
     steps:
       - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v5
       - run: cd rust && cargo publish
         env: { CARGO_REGISTRY_TOKEN: "${{ secrets.CARGO_REGISTRY_TOKEN }}" }
