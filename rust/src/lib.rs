@@ -295,12 +295,42 @@ fn find_cli() -> Option<PathBuf> {
         .find(|path| path.is_file())
 }
 
+/// Encodes a query component as form data: letters, digits and `-._~` stay, a space is `+` and
+/// everything else is `%XX`. The previous HTTP client wrote exactly this; the current one writes
+/// `%20` for a space, so the query is encoded here and added raw to keep the wire as it was.
+fn percent_encode(text: &str) -> String {
+    const HEX_DIGITS: &[u8; 16] = b"0123456789ABCDEF";
+    let mut encoded = String::with_capacity(text.len());
+    for byte in text.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                encoded.push(char::from(byte));
+            }
+            b' ' => encoded.push('+'),
+            _ => {
+                encoded.push('%');
+                encoded.push(char::from(HEX_DIGITS[usize::from(byte >> 4)]));
+                encoded.push(char::from(HEX_DIGITS[usize::from(byte & 0x0f)]));
+            }
+        }
+    }
+    encoded
+}
+
+/// A GET request that gives up after `timeout`, for the whole exchange.
+fn get(url: &str, timeout: Duration) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
+    ureq::get(url)
+        .config()
+        .timeout_global(Some(timeout))
+        .build()
+}
+
 fn healthy(state: &mut State) -> bool {
     let url = format!("{}/sdk/v1/health", base_url());
-    let Ok(response) = ureq::get(&url).timeout(Duration::from_millis(500)).call() else {
+    let Ok(mut response) = get(&url, Duration::from_millis(500)).call() else {
         return false;
     };
-    let Ok(health) = response.into_json::<Health>() else {
+    let Ok(health) = response.body_mut().read_json::<Health>() else {
         return false;
     };
     if health.proto != PROTO {
@@ -421,14 +451,19 @@ impl Runtime {
         }
     }
 
+    // The body is serialized here: the HTTP client's own `send_json` pretty-prints it.
     fn post(&self, request: &OptimizeRequest) -> Option<Result> {
         let url = format!("{}/sdk/v1/optimize", base_url());
-        let response = ureq::post(&url)
-            .timeout(self.timeout)
-            .send_json(request)
+        let mut response = ureq::post(&url)
+            .config()
+            .timeout_global(Some(self.timeout))
+            .build()
+            .content_type("application/json")
+            .send(serde_json::to_string(request).ok()?)
             .ok()?;
         response
-            .into_json::<Result>()
+            .body_mut()
+            .read_json::<Result>()
             .ok()
             .filter(|response| !response.text.is_empty())
     }
@@ -494,11 +529,10 @@ impl Runtime {
             return native.raw(raw_id).unwrap_or_default();
         }
         let url = format!("{}/sdk/v1/raw/{raw_id}", base_url());
-        ureq::get(&url)
-            .timeout(self.timeout)
+        get(&url, self.timeout)
             .call()
             .ok()
-            .and_then(|response| response.into_string().ok())
+            .and_then(|mut response| response.body_mut().read_to_string().ok())
             .unwrap_or_default()
     }
 
@@ -571,11 +605,11 @@ impl Runtime {
             let body = via_engine(native, &serde_json::to_string(&query).ok()?).ok()?;
             return serde_json::from_str(&body).ok();
         }
-        let mut request = ureq::get(&format!("{}{path}", base_url())).timeout(self.timeout);
+        let mut request = get(&format!("{}{path}", base_url()), self.timeout);
         for (key, value) in set {
-            request = request.query(key, value);
+            request = request.query_raw(percent_encode(key), percent_encode(value));
         }
-        request.call().ok()?.into_json().ok()
+        request.call().ok()?.body_mut().read_json().ok()
     }
 
     /// Base URL that routes an LLM client through the gascoigne proxy, or `None` in bypass.

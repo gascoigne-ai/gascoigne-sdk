@@ -24,6 +24,7 @@ changed for you, in plain words.
   `decodeRuns`). `Outcome` and `Route` are string-literal unions that still accept values they do not list, and
   `Run.route` is optional (missing when the server records none). A server answer without a required field or with a
   wrongly typed one is rejected: optimize falls back to the original, ledger reads return an empty list.
+- Rust: the HTTP client `ureq` is updated from 2 to 3. Requests, query strings and bodies on the wire are unchanged.
 - Rust: wire answers are decoded once into typed models. `Run.outcome` is the new `Outcome` enum and `Run.route` is
   `Option<Route>` (`None` when not recorded); both enums keep an `Other(String)` case for values they do not list.
   `Health` is public. `Run` no longer derives `Default`. A server answer without a required field is rejected.
