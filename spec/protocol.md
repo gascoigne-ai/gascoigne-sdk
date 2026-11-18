@@ -37,3 +37,8 @@ private to the process). The answers are the same JSON in both.
   timeout, bad answer, bad query) they return an empty list and log at debug. Go returns the empty
   value with an error instead, as Go does.
 - They do not start the server: with the SDK off or the CLI missing they are empty.
+
+## Fixtures
+
+Real responses of every route live in [`fixtures/`](fixtures/README.md), captured by
+`scripts/capture_fixtures.sh`.

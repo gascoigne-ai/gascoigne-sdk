@@ -1,0 +1,24 @@
+[
+    {
+        "group": "default",
+        "runs": 1,
+        "optimized": 1,
+        "failed": 0,
+        "raw_tokens": 9200,
+        "out_tokens": 34,
+        "saved": 9166,
+        "first": "2026-11-18T01:53:05.367+01:00",
+        "last": "2026-11-18T01:53:05.367+01:00"
+    },
+    {
+        "group": "-",
+        "runs": 1,
+        "optimized": 0,
+        "failed": 0,
+        "raw_tokens": 1,
+        "out_tokens": 1,
+        "saved": 0,
+        "first": "2026-11-18T01:53:05.401+01:00",
+        "last": "2026-11-18T01:53:05.401+01:00"
+    }
+]
