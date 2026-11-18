@@ -22,19 +22,19 @@ func (w wrapped) Call(ctx context.Context, input string) (string, error) {
 	return w.rt.Optimize(ctx, out, Attrs{Tool: w.Name()}), nil
 }
 
-// WrapTool optimizes what t returns. It satisfies the same interface as t.
-func (r *Runtime) WrapTool(t Tool) Tool { return wrapped{t, r} }
+// WrapTool optimizes what tool returns. It satisfies the same interface as tool.
+func (r *Runtime) WrapTool(tool Tool) Tool { return wrapped{tool, r} }
 
 // Fn is a tool function taking a typed input and returning text.
 type Fn[In any] func(context.Context, In) (string, error)
 
 // WrapFunc optimizes the string a tool function returns; errors pass through.
-func WrapFunc[In any](r *Runtime, name string, fn Fn[In]) Fn[In] {
+func WrapFunc[In any](runtime *Runtime, name string, fn Fn[In]) Fn[In] {
 	return func(ctx context.Context, in In) (string, error) {
 		out, err := fn(ctx, in)
 		if err != nil {
 			return out, err
 		}
-		return r.Optimize(ctx, out, Attrs{Tool: name}), nil
+		return runtime.Optimize(ctx, out, Attrs{Tool: name}), nil
 	}
 }

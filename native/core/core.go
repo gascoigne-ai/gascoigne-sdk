@@ -99,7 +99,7 @@ func parseOptions(doc string) (Options, error) {
 }
 
 // Open starts an engine from an Options document and returns its handle.
-func Open(optionsJSON string) (h Handle, err error) {
+func Open(optionsJSON string) (handle Handle, err error) {
 	defer recoverTo(&err)
 	o, err := parseOptions(optionsJSON)
 	if err != nil {
@@ -132,9 +132,9 @@ func Config(optionsJSON string) (yaml string, err error) {
 }
 
 // Optimize runs a Request document and returns a Response document.
-func Optimize(h Handle, requestJSON string) (out string, err error) {
+func Optimize(handle Handle, requestJSON string) (out string, err error) {
 	defer recoverTo(&err)
-	e, err := lookup(h)
+	e, err := lookup(handle)
 	if err != nil {
 		return "", err
 	}
@@ -153,9 +153,9 @@ func Optimize(h Handle, requestJSON string) (out string, err error) {
 }
 
 // Raw returns the original text behind a raw id.
-func Raw(h Handle, id string) (text string, err error) {
+func Raw(handle Handle, id string) (text string, err error) {
 	defer recoverTo(&err)
-	e, err := lookup(h)
+	e, err := lookup(handle)
 	if err != nil {
 		return "", err
 	}
@@ -208,9 +208,9 @@ func query[T any](doc string) (q T, err error) {
 }
 
 // Stats totals the recorded runs per group and returns a JSON list.
-func Stats(h Handle, queryJSON string) (out string, err error) {
+func Stats(handle Handle, queryJSON string) (out string, err error) {
 	defer recoverTo(&err)
-	e, err := lookup(h)
+	e, err := lookup(handle)
 	if err != nil {
 		return "", err
 	}
@@ -231,9 +231,9 @@ func Stats(h Handle, queryJSON string) (out string, err error) {
 }
 
 // Recent lists the recorded runs, newest first, as a JSON list.
-func Recent(h Handle, queryJSON string) (out string, err error) {
+func Recent(handle Handle, queryJSON string) (out string, err error) {
 	defer recoverTo(&err)
-	e, err := lookup(h)
+	e, err := lookup(handle)
 	if err != nil {
 		return "", err
 	}
@@ -267,11 +267,11 @@ func encodeList[T any](rows []T, err error) (string, error) {
 }
 
 // Close stops an engine and forgets its handle. Closing an unknown handle is a no-op.
-func Close(h Handle) (err error) {
+func Close(handle Handle) (err error) {
 	defer recoverTo(&err)
 	mu.Lock()
-	e, ok := engines[h]
-	delete(engines, h)
+	e, ok := engines[handle]
+	delete(engines, handle)
 	mu.Unlock()
 	if !ok {
 		return nil
@@ -279,10 +279,10 @@ func Close(h Handle) (err error) {
 	return e.eng.Close(context.Background())
 }
 
-func lookup(h Handle) (entry, error) {
+func lookup(handle Handle) (entry, error) {
 	mu.Lock()
 	defer mu.Unlock()
-	e, ok := engines[h]
+	e, ok := engines[handle]
 	if !ok {
 		return entry{}, errors.New("unknown or closed handle")
 	}

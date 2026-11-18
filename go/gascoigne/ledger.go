@@ -63,8 +63,8 @@ type RunsQuery struct {
 // LedgerBackend is implemented by a Backend that can also answer ledger reads (the embedded
 // engine does). A Backend without it makes Totals and Runs return ErrNoLedger.
 type LedgerBackend interface {
-	Totals(ctx context.Context, q TotalsQuery) ([]Total, error)
-	Runs(ctx context.Context, q RunsQuery) ([]Run, error)
+	Totals(ctx context.Context, query TotalsQuery) ([]Total, error)
+	Runs(ctx context.Context, query RunsQuery) ([]Run, error)
 }
 
 // ErrNoLedger means there is nothing to read: gascoigne is off or missing, or the embedded
@@ -101,29 +101,29 @@ func (q RunsQuery) values() url.Values {
 
 // Totals sums the recorded runs per group. A failure returns the error and leaves the optimize
 // breaker alone: the application asked for these numbers, so it should hear why it has none.
-func (r *Runtime) Totals(ctx context.Context, q TotalsQuery) ([]Total, error) {
+func (r *Runtime) Totals(ctx context.Context, query TotalsQuery) ([]Total, error) {
 	if r.opts.Backend != nil {
 		backend, ok := r.opts.Backend.(LedgerBackend)
 		if !ok || !r.Ready(ctx) {
 			return nil, ErrNoLedger
 		}
-		return backend.Totals(ctx, q)
+		return backend.Totals(ctx, query)
 	}
 	var out []Total
-	return out, r.read(ctx, "/sdk/v1/stats", q.values(), &out)
+	return out, r.read(ctx, "/sdk/v1/stats", query.values(), &out)
 }
 
 // Runs lists the recorded runs, newest first.
-func (r *Runtime) Runs(ctx context.Context, q RunsQuery) ([]Run, error) {
+func (r *Runtime) Runs(ctx context.Context, query RunsQuery) ([]Run, error) {
 	if r.opts.Backend != nil {
 		backend, ok := r.opts.Backend.(LedgerBackend)
 		if !ok || !r.Ready(ctx) {
 			return nil, ErrNoLedger
 		}
-		return backend.Runs(ctx, q)
+		return backend.Runs(ctx, query)
 	}
 	var out []Run
-	return out, r.read(ctx, "/sdk/v1/recent", q.values(), &out)
+	return out, r.read(ctx, "/sdk/v1/recent", query.values(), &out)
 }
 
 // read GETs a ledger route from the server into out.

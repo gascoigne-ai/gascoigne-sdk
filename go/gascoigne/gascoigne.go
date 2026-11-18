@@ -88,7 +88,7 @@ type Options struct {
 	// per call, default 5s
 	Timeout time.Duration
 	// OnResult sees (original, result) after each optimized call.
-	OnResult func(original string, r Result)
+	OnResult func(original string, result Result)
 	Logger   *slog.Logger
 	// Backend, when set, replaces the server: no HTTP, no CLI, no proxy.
 	Backend Backend
@@ -219,17 +219,17 @@ func (r *Runtime) failed(err error) {
 }
 
 // OptimizeResult optimizes text; on any problem the result carries the input unchanged.
-func (r *Runtime) OptimizeResult(ctx context.Context, text string, a Attrs) Result {
+func (r *Runtime) OptimizeResult(ctx context.Context, text string, attrs Attrs) Result {
 	same := Result{Text: text}
 	if text == "" || !r.Ready(ctx) {
 		return same
 	}
 	if r.opts.Backend != nil {
-		return r.viaBackend(ctx, text, a)
+		return r.viaBackend(ctx, text, attrs)
 	}
 	body, err := json.Marshal(optimizeRequest{
 		Text: text, Agent: r.opts.Agent, Session: r.opts.Session,
-		Tool: a.Tool, Cmd: a.Cmd, URL: a.URL, Query: a.Query, Model: a.Model,
+		Tool: attrs.Tool, Cmd: attrs.Cmd, URL: attrs.URL, Query: attrs.Query, Model: attrs.Model,
 	})
 	if err != nil {
 		return same
@@ -267,9 +267,9 @@ func (r *Runtime) OptimizeResult(ctx context.Context, text string, a Attrs) Resu
 }
 
 // viaBackend is OptimizeResult for an embedded engine.
-func (r *Runtime) viaBackend(ctx context.Context, text string, a Attrs) Result {
+func (r *Runtime) viaBackend(ctx context.Context, text string, attrs Attrs) Result {
 	out, err := r.opts.Backend.Optimize(ctx, Request{
-		Text: text, Agent: r.opts.Agent, Session: r.opts.Session, Attrs: a,
+		Text: text, Agent: r.opts.Agent, Session: r.opts.Session, Attrs: attrs,
 	})
 	if err != nil || out.Text == "" {
 		r.failed(fmt.Errorf("embedded optimize: %w", err))
@@ -295,8 +295,8 @@ func (r *Runtime) Close() error {
 }
 
 // Optimize returns the text the model should read.
-func (r *Runtime) Optimize(ctx context.Context, text string, a Attrs) string {
-	return r.OptimizeResult(ctx, text, a).Text
+func (r *Runtime) Optimize(ctx context.Context, text string, attrs Attrs) string {
+	return r.OptimizeResult(ctx, text, attrs).Text
 }
 
 // Raw returns the original behind an optimized result; empty when unavailable.

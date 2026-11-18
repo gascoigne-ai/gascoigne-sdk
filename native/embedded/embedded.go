@@ -21,18 +21,21 @@ type Options = inproc.Options
 type backend struct{ eng *inproc.Engine }
 
 // New starts an engine and returns it as a Backend.
-func New(ctx context.Context, o Options) (gascoigne.Backend, error) {
-	eng, err := inproc.New(ctx, o)
+func New(ctx context.Context, options Options) (gascoigne.Backend, error) {
+	eng, err := inproc.New(ctx, options)
 	if err != nil {
 		return nil, err
 	}
 	return backend{eng: eng}, nil
 }
 
-func (b backend) Optimize(ctx context.Context, r gascoigne.Request) (gascoigne.Result, error) {
+func (b backend) Optimize(
+	ctx context.Context, request gascoigne.Request,
+) (gascoigne.Result, error) {
 	res, err := b.eng.Optimize(ctx, inproc.Request{
-		Text: r.Text, Tool: r.Attrs.Tool, Cmd: r.Attrs.Cmd, URL: r.Attrs.URL,
-		Query: r.Attrs.Query, Session: r.Session, Agent: r.Agent, Model: r.Attrs.Model,
+		Text: request.Text, Tool: request.Attrs.Tool, Cmd: request.Attrs.Cmd,
+		URL: request.Attrs.URL, Query: request.Attrs.Query, Session: request.Session,
+		Agent: request.Agent, Model: request.Attrs.Model,
 	})
 	if err != nil {
 		return gascoigne.Result{}, err
@@ -48,9 +51,12 @@ func (b backend) Raw(ctx context.Context, id string) (string, error) { return b.
 // Totals and Runs make the backend a gascoigne.LedgerBackend. The engine's types carry
 // the same fields as the SDK's, so they convert directly.
 
-func (b backend) Totals(ctx context.Context, q gascoigne.TotalsQuery) ([]gascoigne.Total, error) {
+func (b backend) Totals(
+	ctx context.Context, query gascoigne.TotalsQuery,
+) ([]gascoigne.Total, error) {
 	rows, err := b.eng.Stats(ctx, inproc.StatsQuery{
-		By: q.By, Session: q.Session, Agent: q.Agent, Model: q.Model, Since: q.Since,
+		By: query.By, Session: query.Session, Agent: query.Agent, Model: query.Model,
+		Since: query.Since,
 	})
 	out := make([]gascoigne.Total, len(rows))
 	for i, row := range rows {
@@ -59,10 +65,10 @@ func (b backend) Totals(ctx context.Context, q gascoigne.TotalsQuery) ([]gascoig
 	return out, err
 }
 
-func (b backend) Runs(ctx context.Context, q gascoigne.RunsQuery) ([]gascoigne.Run, error) {
+func (b backend) Runs(ctx context.Context, query gascoigne.RunsQuery) ([]gascoigne.Run, error) {
 	rows, err := b.eng.Recent(ctx, inproc.RecentQuery{
-		Session: q.Session, Agent: q.Agent, Model: q.Model, Since: q.Since,
-		Before: q.Before, Limit: q.Limit,
+		Session: query.Session, Agent: query.Agent, Model: query.Model, Since: query.Since,
+		Before: query.Before, Limit: query.Limit,
 	})
 	out := make([]gascoigne.Run, len(rows))
 	for i, row := range rows {

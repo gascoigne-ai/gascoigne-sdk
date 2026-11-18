@@ -23,14 +23,14 @@ import (
 func main() {}
 
 // ret converts a Go result to the C convention.
-func ret(s string, err error, out **C.char) *C.char {
+func ret(text string, err error, out **C.char) *C.char {
 	if err != nil {
 		if out != nil {
 			*out = C.CString(err.Error())
 		}
 		return nil
 	}
-	return C.CString(s)
+	return C.CString(text)
 }
 
 // gascoigne_abi_version returns the ABI version of this library.
@@ -64,24 +64,24 @@ func gascoigne_config(options *C.char, err **C.char) *C.char {
 // gascoigne_optimize runs a request JSON document and returns a response JSON document.
 //
 //export gascoigne_optimize
-func gascoigne_optimize(h C.uint64_t, request *C.char, err **C.char) *C.char {
-	s, e := core.Optimize(core.Handle(h), C.GoString(request))
+func gascoigne_optimize(handle C.uint64_t, request *C.char, err **C.char) *C.char {
+	s, e := core.Optimize(core.Handle(handle), C.GoString(request))
 	return ret(s, e, err)
 }
 
 // gascoigne_raw returns the original text behind a raw id.
 //
 //export gascoigne_raw
-func gascoigne_raw(h C.uint64_t, id *C.char, err **C.char) *C.char {
-	s, e := core.Raw(core.Handle(h), C.GoString(id))
+func gascoigne_raw(handle C.uint64_t, id *C.char, err **C.char) *C.char {
+	s, e := core.Raw(core.Handle(handle), C.GoString(id))
 	return ret(s, e, err)
 }
 
 // gascoigne_stats totals the recorded runs per group: a query JSON document in, a JSON list out.
 //
 //export gascoigne_stats
-func gascoigne_stats(h C.uint64_t, query *C.char, err **C.char) *C.char {
-	s, e := core.Stats(core.Handle(h), C.GoString(query))
+func gascoigne_stats(handle C.uint64_t, query *C.char, err **C.char) *C.char {
+	s, e := core.Stats(core.Handle(handle), C.GoString(query))
 	return ret(s, e, err)
 }
 
@@ -89,17 +89,17 @@ func gascoigne_stats(h C.uint64_t, query *C.char, err **C.char) *C.char {
 // list out.
 //
 //export gascoigne_recent
-func gascoigne_recent(h C.uint64_t, query *C.char, err **C.char) *C.char {
-	s, e := core.Recent(core.Handle(h), C.GoString(query))
+func gascoigne_recent(handle C.uint64_t, query *C.char, err **C.char) *C.char {
+	s, e := core.Recent(core.Handle(handle), C.GoString(query))
 	return ret(s, e, err)
 }
 
 // gascoigne_close stops an engine and releases its handle.
 //
 //export gascoigne_close
-func gascoigne_close(h C.uint64_t) { _ = core.Close(core.Handle(h)) }
+func gascoigne_close(handle C.uint64_t) { _ = core.Close(core.Handle(handle)) }
 
 // gascoigne_free releases a string returned by this library.
 //
 //export gascoigne_free
-func gascoigne_free(s *C.char) { C.free(unsafe.Pointer(s)) }
+func gascoigne_free(text *C.char) { C.free(unsafe.Pointer(text)) }

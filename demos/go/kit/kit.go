@@ -112,7 +112,7 @@ func SearchLogs() string {
 
 // Observe returns an OnResult hook that remembers the last call for Report.
 func Observe(before *string, res *gascoigne.Result) func(string, gascoigne.Result) {
-	return func(b string, r gascoigne.Result) { *before, *res = b, r }
+	return func(input string, result gascoigne.Result) { *before, *res = input, result }
 }
 
 // Report prints the answer (if any) and what gascoigne saved.
@@ -133,9 +133,9 @@ func Report(rt *gascoigne.Runtime, before string, res gascoigne.Result, answer s
 }
 
 // preview is the first lines of a text, each cut to the display width.
-func preview(s string) string {
+func preview(text string) string {
 	const lines, width = 8, 72
-	rows := strings.Split(s, "\n")
+	rows := strings.Split(text, "\n")
 	shown := rows[:min(len(rows), lines)]
 	if len(rows) > lines {
 		shown = append(shown, fmt.Sprintf("... %d more lines", len(rows)-lines))
@@ -146,8 +146,8 @@ func preview(s string) string {
 	return indent(strings.Join(shown, "\n"))
 }
 
-func indent(s string) string {
-	return "  " + strings.ReplaceAll(strings.TrimSpace(s), "\n", "\n  ")
+func indent(text string) string {
+	return "  " + strings.ReplaceAll(strings.TrimSpace(text), "\n", "\n  ")
 }
 
 // proxyEvent is one run recorded by the gascoigne server, as GET /api/events lists it.
@@ -174,8 +174,10 @@ func proxyEvents(after int) []proxyEvent {
 	if json.NewDecoder(resp.Body).Decode(&all) != nil {
 		return nil
 	}
-	events := slices.DeleteFunc(all, func(e proxyEvent) bool { return e.Pipeline != "proxy" })
-	slices.SortFunc(events, func(a, b proxyEvent) int { return a.ID - b.ID })
+	events := slices.DeleteFunc(all, func(event proxyEvent) bool {
+		return event.Pipeline != "proxy"
+	})
+	slices.SortFunc(events, func(left, right proxyEvent) int { return left.ID - right.ID })
 	return events
 }
 
@@ -193,8 +195,8 @@ func ReportProxy(mark int, answer string) {
 	fmt.Printf("Model answer:\n%s\n\n", indent(answer))
 	var results []proxyEvent
 	for range 10 {
-		results = slices.DeleteFunc(proxyEvents(mark), func(e proxyEvent) bool {
-			return e.RawTokens == 0 || e.Route != "default"
+		results = slices.DeleteFunc(proxyEvents(mark), func(event proxyEvent) bool {
+			return event.RawTokens == 0 || event.Route != "default"
 		})
 		if len(results) > 0 {
 			break

@@ -69,14 +69,14 @@ func memoryOptions(t *testing.T, extra func(*Options)) string {
 	return string(body)
 }
 
-func optimizeLog(t *testing.T, h Handle, session string) {
+func optimizeLog(t *testing.T, handle Handle, session string) {
 	t.Helper()
 	raw := strings.Repeat("INFO request served path=/api/items status=200 ms=12\n", 400)
 	req, _ := json.Marshal(Request{
 		Text: raw, Tool: "bash", Cmd: "tail -n 400 app.log",
 		Session: session, Agent: "sdk", Model: "acme-large",
 	})
-	if _, err := Optimize(h, string(req)); err != nil {
+	if _, err := Optimize(handle, string(req)); err != nil {
 		t.Fatal(err)
 	}
 }

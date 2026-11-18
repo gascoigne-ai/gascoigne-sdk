@@ -14,23 +14,25 @@ import (
 func ledgerServer(t *testing.T, status int) *string {
 	t.Helper()
 	var last string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		last = r.URL.Path + "?" + r.URL.RawQuery
-		if r.URL.Path == "/sdk/v1/health" {
-			_ = json.NewEncoder(w).Encode(map[string]any{"version": "t", "proto": 1})
+	srv := httptest.NewServer(http.HandlerFunc(func(
+		writer http.ResponseWriter, request *http.Request,
+	) {
+		last = request.URL.Path + "?" + request.URL.RawQuery
+		if request.URL.Path == "/sdk/v1/health" {
+			_ = json.NewEncoder(writer).Encode(map[string]any{"version": "t", "proto": 1})
 			return
 		}
 		if status != http.StatusOK {
-			http.Error(w, "boom", status)
+			http.Error(writer, "boom", status)
 			return
 		}
-		switch r.URL.Path {
+		switch request.URL.Path {
 		case "/sdk/v1/stats":
 			total := Total{Group: "sdk", Runs: 2, RawTokens: 100, OutTokens: 40, Saved: 60}
-			_ = json.NewEncoder(w).Encode([]Total{total})
+			_ = json.NewEncoder(writer).Encode([]Total{total})
 		case "/sdk/v1/recent":
 			run := Run{ID: 7, Session: "s1", RawID: "abc", Outcome: "optimized"}
-			_ = json.NewEncoder(w).Encode([]Run{run})
+			_ = json.NewEncoder(writer).Encode([]Run{run})
 		}
 	}))
 	t.Cleanup(srv.Close)

@@ -20,18 +20,20 @@ type fakeServer struct {
 
 func (f *fakeServer) serve(t *testing.T) {
 	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
+	srv := httptest.NewServer(http.HandlerFunc(func(
+		writer http.ResponseWriter, request *http.Request,
+	) {
+		switch request.URL.Path {
 		case "/sdk/v1/health":
-			_ = json.NewEncoder(w).Encode(map[string]any{"version": "t", "proto": f.proto})
+			_ = json.NewEncoder(writer).Encode(map[string]any{"version": "t", "proto": f.proto})
 		case "/sdk/v1/optimize":
 			f.posts.Add(1)
-			_ = json.NewDecoder(r.Body).Decode(&f.last)
-			w.WriteHeader(f.status)
+			_ = json.NewDecoder(request.Body).Decode(&f.last)
+			writer.WriteHeader(f.status)
 			reply := Result{Text: "short", RawID: "abc", RawTokens: 100, OutTokens: 5}
-			_ = json.NewEncoder(w).Encode(reply)
+			_ = json.NewEncoder(writer).Encode(reply)
 		default:
-			_, _ = w.Write([]byte("original"))
+			_, _ = writer.Write([]byte("original"))
 		}
 	}))
 	t.Cleanup(srv.Close)
@@ -77,7 +79,9 @@ func TestOptimizesThroughServer(t *testing.T) {
 	f := &fakeServer{proto: 1, status: 200}
 	f.serve(t)
 	var seen string
-	rt := New(Options{Agent: "demo", OnResult: func(_ string, r Result) { seen = r.RawID }})
+	rt := New(Options{Agent: "demo", OnResult: func(_ string, result Result) {
+		seen = result.RawID
+	}})
 	ctx := context.Background()
 	res := rt.OptimizeResult(ctx, strings.Repeat("long ", 100), Attrs{Tool: "grep"})
 	if res.Text != "short" || res.RawID != "abc" || seen != "abc" {
