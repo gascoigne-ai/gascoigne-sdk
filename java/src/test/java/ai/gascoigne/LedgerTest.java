@@ -95,7 +95,7 @@ class LedgerTest {
     }
 
     @Test void bypassIsEmpty() {
-        var g = Gascoigne.builder().addr("127.0.0.1:9").searchPath("").warn(m -> {}).build();
+        var g = Gascoigne.builder().addr("127.0.0.1:9").searchPath("").warn(message -> {}).build();
         assertTrue(g.totals(TotalsQuery.ALL).isEmpty());
     }
 

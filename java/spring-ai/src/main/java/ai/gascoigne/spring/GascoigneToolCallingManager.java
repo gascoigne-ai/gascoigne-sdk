@@ -67,7 +67,8 @@ public final class GascoigneToolCallingManager implements ToolCallingManager {
 
     private ToolResponseMessage shorten(ToolResponseMessage message) {
         List<ToolResponse> responses = message.getResponses().stream()
-                .map(r -> new ToolResponse(r.id(), r.name(), shorten(r.name(), r.responseData())))
+                .map(response -> new ToolResponse(response.id(), response.name(),
+                        shorten(response.name(), response.responseData())))
                 .toList();
         return new ToolResponseMessage(responses, message.getMetadata());
     }

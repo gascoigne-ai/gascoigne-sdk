@@ -48,7 +48,8 @@ class GascoigneTest {
         assertEquals("again", g.optimize("again", Attrs.NONE));
         assertTrue(g.proxyBaseUrl("openai").isEmpty());
         assertEquals("", g.raw("x"));
-        assertEquals(1, warnings.stream().filter(w -> w.contains("not found on PATH")).count());
+        assertEquals(1,
+                warnings.stream().filter(warning -> warning.contains("not found on PATH")).count());
     }
 
     @Test void optimizesThroughServer() throws Exception {
@@ -71,7 +72,7 @@ class GascoigneTest {
     }
 
     @Test void unknownProtoBypasses() throws Exception {
-        var g = Gascoigne.builder().addr(serve(99, 200)).searchPath("").warn(m -> {}).build();
+        var g = Gascoigne.builder().addr(serve(99, 200)).searchPath("").warn(message -> {}).build();
         assertEquals("x", g.optimize("x", Attrs.NONE));
         assertTrue(posts.isEmpty());
     }
@@ -84,7 +85,7 @@ class GascoigneTest {
 
     @Test void wrapToolOptimizesStrings() throws Exception {
         var g = Gascoigne.builder().addr(serve(1, 200)).build();
-        assertEquals("short", g.wrapTool("t", (String s) -> "big").apply("in"));
+        assertEquals("short", g.wrapTool("t", (String text) -> "big").apply("in"));
     }
 
     @Test void retrieveNarrowsTheOriginal() throws Exception {

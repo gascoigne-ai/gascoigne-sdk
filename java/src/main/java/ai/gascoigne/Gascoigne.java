@@ -328,7 +328,7 @@ public final class Gascoigne {
                 return Optional.empty();
             }
             Result result = JSON.readValue(response.body(), Result.class);
-            return Optional.of(result).filter(r -> r.text() != null);
+            return Optional.of(result).filter(parsed -> parsed.text() != null);
         } catch (JsonProcessingException e) {
             return Optional.empty();
         } catch (IOException e) {
@@ -362,7 +362,7 @@ public final class Gascoigne {
 
     private Optional<Result> embeddedCall(OptimizeRequest body) {
         try {
-            return Optional.of(engine.optimize(body)).filter(r -> r.text() != null);
+            return Optional.of(engine.optimize(body)).filter(result -> result.text() != null);
         } catch (Exception e) {
             return Optional.empty();
         }

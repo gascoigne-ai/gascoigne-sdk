@@ -102,7 +102,7 @@ public final class Demo {
                     HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
             ProxyEvent[] events = JSON.readValue(response.body(), ProxyEvent[].class);
             return java.util.Arrays.stream(events)
-                    .filter(e -> "proxy".equals(e.pipeline()))
+                    .filter(event -> "proxy".equals(event.pipeline()))
                     .sorted(Comparator.comparingLong(ProxyEvent::id))
                     .toList();
         } catch (IOException e) {
@@ -124,7 +124,7 @@ public final class Demo {
         List<ProxyEvent> results = List.of();
         for (int attempt = 0; attempt < 10 && results.isEmpty(); attempt++) {
             results = proxyEvents(mark).stream()
-                    .filter(e -> e.rawTokens() > 0 && "default".equals(e.route()))
+                    .filter(event -> event.rawTokens() > 0 && "default".equals(event.route()))
                     .toList();
             if (results.isEmpty()) {
                 try {

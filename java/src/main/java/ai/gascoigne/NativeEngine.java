@@ -41,7 +41,7 @@ final class NativeEngine implements AutoCloseable {
 
         void gascoigne_close(long handle);
 
-        void gascoigne_free(Pointer s);
+        void gascoigne_free(Pointer pointer);
     }
 
     private final Lib lib;
@@ -202,15 +202,15 @@ final class NativeEngine implements AutoCloseable {
         return take(ref.getValue(), "failed");
     }
 
-    private String take(Pointer p, String fallback) {
-        if (p == null) {
+    private String take(Pointer pointer, String fallback) {
+        if (pointer == null) {
             return fallback;
         }
         try {
-            return new String(p.getString(0, "UTF-8").getBytes(StandardCharsets.UTF_8),
+            return new String(pointer.getString(0, "UTF-8").getBytes(StandardCharsets.UTF_8),
                     StandardCharsets.UTF_8);
         } finally {
-            lib.gascoigne_free(p);
+            lib.gascoigne_free(pointer);
         }
     }
 
