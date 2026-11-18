@@ -7,6 +7,8 @@ for every language in this repo.
 - **100 columns maximum**, for code, comments and docs alike. Linters and formatters are configured
   to 100 (`ruff`, Biome, `rustfmt`, `golangci-lint lll`, `.editorconfig`); `scripts/style.py` checks
   every source file.
+- No one-letter parameter names: `scripts/style.py` checks them (`make check`), with the exemptions
+  of the common rules (`.harness/common/rules.md`, Naming).
 - Break long calls one argument per line rather than squeezing; let the formatter decide.
 
 ## Comments

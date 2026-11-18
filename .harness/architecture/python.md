@@ -3,7 +3,7 @@ Package `python/gascoigne/src/gascoigne`; approved dependency: `httpx`.
 
 | Zone | Files | Holds |
 |---|---|---|
-| core | `models.py` | wire dataclasses (`OptimizeRequest`, `Result`, `Run`, `Stats`, `Total`) |
+| core | `models.py` | wire dataclasses (`Health`, `OptimizeRequest`, `Result`, `Run`, `Stats`, `Total`) and open enums `Outcome`, `Route` (unknown server values kept); answers are parsed here, once |
 | core | `retrieve.py` | `select`: grep or line range over an original |
 | core | `state.py` | `State`, `Event`, `TRANSITIONS`, `Machine` (stored state, breaker counters, warn-once flag) |
 | core + composition | `runtime.py` | `Runtime`: owns the lock, the `Machine` and the stats; picks native or HTTP; module functions over a default instance |
@@ -16,3 +16,5 @@ Package `python/gascoigne/src/gascoigne`; approved dependency: `httpx`.
 
 `__init__.py` is the public surface. `Runtime` stays the composition point: adapters never import
 each other, and `http.py` returns the protocol number so `Runtime` decides on a mismatch.
+The one answer not parsed through `models.py` is `http.health()`: it reads `proto` from the raw
+JSON, and `Health` is used only in tests.

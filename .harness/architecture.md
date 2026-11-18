@@ -22,13 +22,31 @@ Contract for all languages: `spec/protocol.md`, `spec/native.md`. Per-language m
 | native library (Go, C ABI) | [architecture/native.md](architecture/native.md) |
 
 ## Known mixing
-In every language the runtime type (a `Runtime`, `Gascoigne` or `GascoigneClient` class or struct)
-holds core state and both adapters together. `python/gascoigne/src/gascoigne/runtime.py` is the
-worst case and the target of task 007 (`007-python-runtime-split`): `Runtime` mixes
-- core: breaker (`_failed`, `_paused_until`), warn-once, `_stats`, the `_lock`;
-- HTTP adapter: `httpx` client (`_http`, `_healthy`, `_read`, optimize/raw/totals/runs requests);
-- process adapter: `_start_server` (finds the CLI, spawns it);
-- helpers: `wrap_tool`, `proxy_base_url`;
-- module-level default instance functions (`init`, `optimize`, `raw`, `stats`, ...).
+Python is split: `state.py` holds the state machine, `http.py` and `process.py` the two adapters,
+`models.py` the wire types. `python/gascoigne/src/gascoigne/runtime.py` is now the composition
+point, and what still mixes there is small:
+- core: `Runtime` owns the `_lock` and the `_stats`, and drives the `Machine` from `state.py`;
+- adapter logic: `_health` and `_start_server` decide events and warnings from `http.health` and
+  `process.*`, with the 3 s poll loop; `_read` and `optimize_result` choose native or HTTP and
+  catch `httpx.HTTPError` next to `NativeError`;
+- helpers: `wrap_tool`, `proxy_base_url`, `retrieve`, and the module functions over a default
+  instance (`init`, `optimize`, `raw`, `stats`, ...) live in the same file;
+- query building (`_query`, `_rfc3339`) sits beside the request code.
 
-Task 007 splits it into state, HTTP and process. Update the Python map in the same commit.
+Wire answers are parsed once in `models.py`, with one exception: `http.health()` reads `proto`
+from the raw JSON and returns an int; the `Health` model exists but only tests use it.
+
+The other languages still let the runtime type (`Runtime` in TypeScript, Rust and Go, `Gascoigne`
+in Java, `GascoigneClient` in .NET) hold core state and both adapters together: breaker, warn-once
+and stats sit beside the HTTP calls and the server spawn in one file. Java is the partial
+exception: the stored state, transitions, breaker counters and warn-once flag moved into the
+package-private `Machine`, but `Gascoigne.java` still holds the HTTP calls and the process spawn.
+Wire answers are parsed at the edge: TypeScript by the `decode*` functions (`decodeHealth`,
+`decodeResult`, `decodeTotals`, `decodeRuns`), Rust by `serde`.
+
+## Style check
+`scripts/style.py` (run by `make check`) checks 100 columns, trailing comments and ASCII, and
+since task 020 also the one-letter parameter check over the sources from `git ls-files`
+(tracked plus untracked, not ignored). `scripts/style.py --params <path>...` runs only the
+parameter check on any file or directory, for ad-hoc use. Exemptions follow `common/rules.md`
+(Naming): `_`, `i`, `j`, Go `t`/`b`/`f` on testing types.
