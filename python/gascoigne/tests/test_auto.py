@@ -22,7 +22,12 @@ def runtime(httpx_mock):
     httpx_mock.add_response(url="http://127.0.0.1:9/sdk/v1/health", json={"proto": PROTO})
     httpx_mock.add_response(
         url="http://127.0.0.1:9/sdk/v1/optimize",
-        json={"text": "short [gascoigne: full: gascoigne raw abc]", "raw_id": "abc"},
+        json={
+            "text": "short [gascoigne: full: gascoigne raw abc]",
+            "raw_id": "abc",
+            "raw_tokens": 50,
+            "out_tokens": 5,
+        },
         is_reusable=True,
     )
     return Runtime()

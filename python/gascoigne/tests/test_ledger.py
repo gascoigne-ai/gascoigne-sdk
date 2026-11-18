@@ -69,6 +69,7 @@ def test_runs_through_the_server(httpx_mock):
                 "session": "s1",
                 "raw_tokens": 100,
                 "out_tokens": 10,
+                "duration_ns": 1000,
                 "raw_id": "abc",
                 "outcome": "optimized",
                 "optimizers": ["log"],

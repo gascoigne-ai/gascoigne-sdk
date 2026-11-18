@@ -77,7 +77,9 @@ def test_wrap_tool_sync_and_async(httpx_mock):
 
     httpx_mock.add_response(url="http://127.0.0.1:9/sdk/v1/health", json={"proto": PROTO})
     httpx_mock.add_response(
-        url="http://127.0.0.1:9/sdk/v1/optimize", json={"text": "S"}, is_reusable=True
+        url="http://127.0.0.1:9/sdk/v1/optimize",
+        json={"text": "S", "raw_tokens": 1, "out_tokens": 1},
+        is_reusable=True,
     )
     rt = Runtime()
 

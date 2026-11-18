@@ -238,7 +238,7 @@ class Runtime:
         try:
             if self._native:
                 return self._native.totals(query)
-            return [Total.from_json(d) for d in self._read("/sdk/v1/stats", query)]
+            return Total.parse_list(self._read("/sdk/v1/stats", query))
         except (httpx.HTTPError, NativeError, ValueError, KeyError, TypeError) as e:
             log.debug("gascoigne totals failed: %s", e)
             return []
@@ -268,7 +268,7 @@ class Runtime:
                     if key in query:
                         native_query[key] = int(query[key])
                 return self._native.runs(native_query)
-            return [Run.from_json(d) for d in self._read("/sdk/v1/recent", query)]
+            return Run.parse_list(self._read("/sdk/v1/recent", query))
         except (httpx.HTTPError, NativeError, ValueError, KeyError, TypeError) as e:
             log.debug("gascoigne runs failed: %s", e)
             return []

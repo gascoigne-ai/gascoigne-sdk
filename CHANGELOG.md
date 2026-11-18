@@ -6,6 +6,14 @@ version of the CLI release they were built with. Each ecosystem has its own tag 
 `java-v`, `dotnet-v`, `rust-v`, `native-v`, see `docs/releasing.md`). Each release starts with "In short": what
 changed for you, in plain words.
 
+## [Unreleased]
+
+### Changed
+
+- Python: wire answers are parsed once into typed models (`Health`, `Result`, `Total`, `Run`). `Outcome` and
+  `Route` are `StrEnum`s, so comparisons with plain strings keep working. A server answer without a required field
+  or with a wrongly typed one is now rejected instead of filled with zeros; `Run.route` is `None` when not recorded.
+
 ## [0.11.0] - 2026-11-05
 
 The SDK counts tokens only: costs and the pricing option of 0.10.0 are gone. It needs `gascoigne-cli` 0.11.0 in proxy mode.
