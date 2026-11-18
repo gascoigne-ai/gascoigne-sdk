@@ -20,18 +20,15 @@ jobs:
         task: [style, py:check, ts:check, go:check, native:check, java:check, dotnet:check, rust:check]
     steps:
       - uses: actions/checkout@v4
+        with: { submodules: true }
       # The native library is built from the CLI's engine facade (package inproc).
-      - uses: actions/checkout@v4
-        with: { repository: gascoigne-ai/gascoigne-cli, path: cli }
       - uses: jdx/mise-action@v2
       - run: mise run ${{ matrix.task }}
-        env: { GASCOIGNE_CLI_DIR: "${{ github.workspace }}/cli" }
   e2e:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with: { repository: gascoigne-ai/gascoigne-cli, path: cli }
+        with: { submodules: true }
       # The SDKs need the CLI's /sdk/v1 API; until a CLI release has it, say so instead of failing.
       - id: cli
         run: |

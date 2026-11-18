@@ -40,10 +40,9 @@ dir = "go"
 run = ["gofmt -l -e . | (! grep .)", "golangci-lint run ./...", "cd ../demos/go && golangci-lint run -c ../../go/.golangci.yml ./...", "go test ./..."]
 
 [tasks."native:build"]
-description = "Build libgascoigne (C ABI) into native/dist; GASCOIGNE_CLI_DIR points at a CLI checkout"
+description = "Build libgascoigne (C ABI) into native/dist; the CLI is the submodule `cli`"
 dir = "native"
 run = [
-  "if [ -n \"$GASCOIGNE_CLI_DIR\" ]; then go mod edit -replace github.com/gascoigne-ai/gascoigne-cli=$GASCOIGNE_CLI_DIR; fi",
   "go build -buildmode=c-shared -o dist/libgascoigne.so .",
   "cd .. && python3 scripts/bundle_native.py",
 ]
