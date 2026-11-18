@@ -10,11 +10,31 @@ changed for you, in plain words.
 
 ### Fixed
 
+- Python and Java: a server that answers `/health` with another protocol version is now `proto_mismatch` at once:
+  the SDK warns one time and bypasses, instead of also trying to start a second server. A server that answers with
+  another protocol while the SDK waits for the one it just started ends the wait the same way.
+- Security (demos and lockfiles only, no SDK code): `hono` is pinned to 4.13.16 or newer in `demos/typescript`
+  and `opentelemetry-api` is updated to 1.45.2 in `python/uv.lock`.
 - .NET: `retrieve_original` no longer counts a phantom last line when the original ends in a newline; the cap
   note now says 200 more lines for the fixture, like Python. Empty text now returns an empty string.
 
 ### Changed
 
+- TypeScript: wire answers are decoded once at the edge (`decodeHealth`, `decodeResult`, `decodeTotals`,
+  `decodeRuns`). `Outcome` and `Route` are string-literal unions that still accept values they do not list, and
+  `Run.route` is optional (missing when the server records none). A server answer without a required field or with a
+  wrongly typed one is rejected: optimize falls back to the original, ledger reads return an empty list.
+- Rust: wire answers are decoded once into typed models. `Run.outcome` is the new `Outcome` enum and `Run.route` is
+  `Option<Route>` (`None` when not recorded); both enums keep an `Other(String)` case for values they do not list.
+  `Health` is public. `Run` no longer derives `Default`. A server answer without a required field is rejected.
+- Rust and Java: one-letter parameters and closure arguments have full names. All are private, so no public change.
+- Go: one-letter parameters have full names, no type changes. Public ones that show up in docs and editor hints:
+  `Options.OnResult` (`result`), `Runtime.Optimize` and `OptimizeResult` (`attrs`), `Runtime.Totals`, `Runtime.Runs`
+  and the `LedgerBackend` methods (`query`), `Runtime.WrapTool` (`tool`), `WrapFunc` (`runtime`), and in the native
+  library the C functions `gascoigne_optimize`, `_raw`, `_stats`, `_recent` and `_close` (`handle`) and
+  `gascoigne_free` (`text`).
+- TypeScript: one-letter parameters have full names, no type changes: `decodeHealth`, `decodeResult`,
+  `decodeTotals` and `decodeRuns` take `body`, and `totals` and `runs` (also on `Runtime`) take `filter`.
 - .NET: one-letter parameters and closure arguments now have full names. All renamed ones are private or
   internal, so no public parameter name changes and named-argument callers keep working.
 - Python: wire answers are parsed once into typed models (`Health`, `Result`, `Total`, `Run`). `Outcome` and
