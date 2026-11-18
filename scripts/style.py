@@ -2,8 +2,9 @@
 """Checks what linters do not: 100 columns, no trailing comments, ASCII-only source.
 
 See .harness/code-style.md. Usage: scripts/style.py
-Also: scripts/style.py --params <path>... reports one-letter parameter names (not part of the
-check yet). A path is a file or a directory searched recursively.
+The default run also rejects one-letter parameter names in the tracked sources.
+Also: scripts/style.py --params <path>... reports them for any path: a file or a directory
+searched recursively.
 """
 
 import ast
@@ -459,8 +460,9 @@ def main(argv: list[str] | None = None) -> int:
     argv = sys.argv if argv is None else argv
     if wants_params(argv):
         return params_main(argv[2:])
+    sources = tracked_sources()
     problems = []
-    for path in tracked_sources():
+    for path in sources:
         marker = LINE_COMMENT.get(path.suffix, "//")
         for no, line in enumerate(path.read_text().splitlines(), 1):
             if len(line.expandtabs(4)) > MAX_COLS:
@@ -469,6 +471,8 @@ def main(argv: list[str] | None = None) -> int:
                 problems.append(f"{path}:{no}: non-ASCII character")
             if trailing_comment(line, marker) and "http" not in line:
                 problems.append(f"{path}:{no}: trailing comment; put it on the line above")
+    # Tracked files only: submodules and generated directories are other code.
+    problems += [message for _, _, message in sorted(check_params([str(p) for p in sources]))]
     print("\n".join(problems) or "style ok")
     return 1 if problems else 0
 
