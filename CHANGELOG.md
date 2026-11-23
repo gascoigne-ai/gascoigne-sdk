@@ -8,6 +8,21 @@ changed for you, in plain words.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-23
+
+The last minor release before GA: stricter typed answers in Python, TypeScript and Rust, a faster failure when the
+server speaks another protocol, and renamed internals. It needs `gascoigne-cli` 0.12.0 in proxy mode.
+
+### In short
+
+- **Typed wire answers.** Python, TypeScript and Rust decode the server's answers once, into `Health`, `Result`,
+  `Total` and `Run`. An answer with a missing or wrongly typed field is rejected: optimize falls back to the
+  original, ledger reads return an empty list. `Outcome` and `Route` accept values they do not list.
+- **Protocol mismatch ends at once.** Python and Java warn one time and bypass, instead of also starting a second
+  server.
+- **Fixes for .NET and demos.** `retrieve_original` counts lines like Python, and two security pins land in the demos
+  and lockfiles.
+
 ### Fixed
 
 - Python and Java: a server that answers `/health` with another protocol version is now `proto_mismatch` at once:
